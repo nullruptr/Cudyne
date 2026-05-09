@@ -1,8 +1,9 @@
 #include "todo.hpp"
+#include <wx/gdicmn.h>
 #include <wx/wx.h>
 
 Todo::Todo(wxWindow* parent, Database &dbRef) 
-	: wxFrame(parent, wxID_ANY, wxT("ToDo"), wxDefaultPosition)
+	: wxFrame(parent, wxID_ANY, wxT("ToDo"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT)
 	, m_db(dbRef) {
 
 	// ウィンドウが初期化された後に FromDIP しないとクラッシュする
@@ -42,4 +43,5 @@ Todo::Todo(wxWindow* parent, Database &dbRef)
 
 	sizer->Add(m_dvlc, 1, wxEXPAND | wxALL, FromDIP(10));
 	main_panel->SetSizer(sizer);
+	CenterOnParent();
 }
