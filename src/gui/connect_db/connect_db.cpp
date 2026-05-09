@@ -11,14 +11,14 @@ ConnectDB::ConnectDB(wxWindow* parent)
 
 	wxBoxSizer* pathSizer = new wxBoxSizer(wxHORIZONTAL);
 	wxStaticText* label = new wxStaticText(this, wxID_ANY, _("Database Path:"));
-	dbPathInput = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(300, -1)); // 入力欄をあえて広くするために、wxSize で指定
+	dbPathInput = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(FromDIP(200), -1)); // 入力欄をあえて広くするために、wxSize で指定
 	wxButton* btnBrowse = new wxButton(this, wxID_ANY, _("..."));
 
-	pathSizer->Add(label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
-	pathSizer->Add(dbPathInput, 1, wxEXPAND | wxRIGHT, 5);
+	pathSizer->Add(label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(5));
+	pathSizer->Add(dbPathInput, 1, wxEXPAND | wxRIGHT, FromDIP(5));
 	pathSizer->Add(btnBrowse, 0);
 
-	mainSizer->Add(pathSizer, 0, wxEXPAND | wxALL, 10);
+	mainSizer->Add(pathSizer, 0, wxEXPAND | wxALL, FromDIP(10));
 
 	// 下部
 	wxBoxSizer* bottomSizer = new wxBoxSizer(wxHORIZONTAL); // 下部ボタン用サイザ
@@ -27,12 +27,12 @@ ConnectDB::ConnectDB(wxWindow* parent)
 	wxButton* btnConnect = new wxButton(this, wxID_ANY, _("Connect"));
 	wxButton* btnQuit = new wxButton(this, wxID_CANCEL, _("Quit"));
 
-	bottomSizer->Add(btnCreateNew, 0, wxLEFT, 5);
+	bottomSizer->Add(btnCreateNew, 0, wxLEFT, FromDIP(5));
 	bottomSizer->AddStretchSpacer();
-	bottomSizer->Add(btnConnect, 0, wxRIGHT, 5);
+	bottomSizer->Add(btnConnect, 0, wxRIGHT, FromDIP(5));
 	bottomSizer->Add(btnQuit, 0);
 
-	mainSizer->Add(bottomSizer, 0, wxEXPAND | wxALL, 10);
+	mainSizer->Add(bottomSizer, 0, wxEXPAND | wxALL, FromDIP(10));
 	SetSizerAndFit(mainSizer);
 
 	btnCreateNew->Bind(wxEVT_BUTTON, &ConnectDB::OnCreateNew, this);
