@@ -1,5 +1,8 @@
 #pragma once
+#include <soci/session.h>
 #include <sqlite3.h>
+#include <soci/soci.h>
+#include <soci/sqlite3/soci-sqlite3.h>
 #include <string>
 #include <vector>
 
@@ -50,5 +53,6 @@ std::vector<Database::RecordSummary> GetRecordsByRange(const std::string& start_
 
 private:
 	sqlite3* db;
+	soci::session sql;
 	std::string path;
 };

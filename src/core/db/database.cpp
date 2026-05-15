@@ -67,11 +67,27 @@ bool Database::Initialize(){
 		")"
 		";"
 
+		"CREATE TABLE IF NOT EXISTS todo"
+		"("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		"category_id INTEGER,"
+		"status INTEGER DEFAULT 0,"
+		"priority INTEGER,"
+		"todo_name TEXT NOT NULL,"
+		"start_time TEXT,"
+		"deadline TEXT,"
+		"completion_date TEXT,"
+		"memo TEXT"
+		")"
+		";"
+
 		"CREATE TABLE IF NOT EXISTS records ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT,"
 		"category_id INTEGER NOT NULL," // カテゴリ番号。 categories の id と同じ番号に相当する
+		"todo_id INTEGER," // TODO ID
 		"time_begin TEXT NOT NULL," // 開始時刻
-		"time_end TEXT NOT NULL" // 終了時刻
+		"time_end TEXT NOT NULL," // 終了時刻
+		"memo TEXT" // メモ
 		")"
 		";";
 
