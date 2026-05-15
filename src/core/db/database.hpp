@@ -20,12 +20,14 @@ public:
 		int id;
 		int parent_id;
 		std::string name;
+		int is_folder;
 	};
 	bool GetAllCategories(std::vector<Category>& out);
 	bool UpdateCategories(int id, const std::string& name);
 	// ------
 	bool HasRecords(int category_id);   // 記録の存在確認
 	bool HideCategory(int id);          // ソフトデリート
+	bool IsFolder(int id); // フォルダか否か判定
 	bool EditParentId(long long id, long long parent_id); // ツリーアイテム移動
 
 	struct RecordSummary {

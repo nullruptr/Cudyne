@@ -1,3 +1,4 @@
+#include <wx/artprov.h>
 #include <wx/event.h>
 #include <wx/treebase.h>
 #include <wx/wx.h>
@@ -46,6 +47,12 @@ CategoryTree::CategoryTree(wxWindow* parent, Database &dbRef)
 		this,
 		wxID_DELETE
 	);
+
+    // フォルダアイコンの設定
+    m_image_list = new wxImageList(FromDIP(16), FromDIP(16));
+    m_image_list->Add(wxArtProvider::GetBitmap(wxART_FOLDER, wxART_OTHER, wxSize(FromDIP(16), FromDIP(16))));
+    m_image_list->Add(wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(FromDIP(16),FromDIP(16))));
+    AssignImageList(m_image_list);
 }
 
 void CategoryTree::OnItemSelected(wxTreeEvent& event) {
@@ -96,7 +103,10 @@ void CategoryTree::BuildTree(
 	for (const auto& c : categories){ // カテゴリ数だけループ
 		if (c.parent_id == parentId){ // DB のparent_id と 引数の数値が同値の時
 			wxString displayName = wxString::FromUTF8(c.name.c_str()); // UTF8 で読み込み
-			wxTreeItemId node = AppendItem(parentNode, displayName, -1, -1, new TreeItemData(c.id)); // 親の場所に子の名前でツリー登録。同時にID(c.id) をデータとして紐付け。
+			
+			int icon = c.is_folder ? ICON_FILE : ICON_FOLDER;
+
+			wxTreeItemId node = AppendItem(parentNode, displayName, icon, icon, new TreeItemData(c.id)); // 親の場所に子の名前でツリー登録。同時にID(c.id) をデータとして紐付け。
 			BuildTree(c.id, node, categories); // 再起処理。自分のIDとノードを渡して、カテゴリ全件も渡す。子が存在したらぶら下げる。
 		}
 	}

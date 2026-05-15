@@ -1,5 +1,8 @@
 #include "core/db/database.hpp"
 #include <iostream>
+#include <soci/error.h>
+#include <soci/rowset.h>
+#include <soci/sqlite3/soci-sqlite3.h>
 #include <sqlite3.h>
 #include <string>
 #include <vector>
@@ -12,28 +15,26 @@ Database::Database() : db(nullptr) {
 }
 
 Database::~Database(){ // 終了時処理。安全のため、デストラクタでもクローズ。
-	Close();
+    sql.close();
 }
 
 bool Database::Connect(const std::string& path) { // DB に接続 
+    try {
 	// すでに接続されているときは、閉じる
-	if (db != nullptr){
-		Close();
+	if (sql.get_backend() != nullptr) {
+	    sql.close();
 	}
 
-	int rc = sqlite3_open_v2(
-			path.c_str(),
-			&db,
-			SQLITE_OPEN_READWRITE, // 開くだけ
-			nullptr);
+	sql.open(soci::sqlite3, path);
 
-	if (rc != SQLITE_OK){ // SQLite が、開かなかった場合の処理
-		std::cerr << sqlite3_errmsg(db) << std::endl;
-		db = nullptr;
-		return false;
-	}
+	// 外部キー制約を有効化
+	sql << "PRAGMA foreign_keys = ON";
 
 	return true;
+    } catch (const soci::soci_error& e) {
+	std::cerr << "Connect Eroor: " << e.what() << std::endl;
+	return false;
+    }
 }
 
 bool Database::Create(const std::string& path) { // DB 新規作成
@@ -221,34 +222,28 @@ bool Database::InsertRecords(int category_id, const std::string &time_begin, con
 bool Database::GetAllCategories(std::vector<Category> &out){ // 全カテゴリ取得
 	out.clear(); // 安全のため最初に初期化
 
-	if (db == nullptr){
-		return false;
-	}
+    if (sql.get_backend() == nullptr) return false;
 
-	const char* sql = "SELECT id, parent_id, name FROM categories WHERE is_hidden = 0 ORDER BY name ASC;";
+    try {
+	soci::rowset<soci::row> rs = (sql.prepare <<
+	    "SELECT id, parent_id, name, is_folder FROM categories WHERE is_hidden = 0 ORDER BY name ASC;");
 
-	
-	sqlite3_stmt* stmt = nullptr;
-	if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK){
-		return false;
-	}
+	for (auto it = rs.begin(); it != rs.end(); ++it) {
+	    const soci::row& row = *it;
+	    Category c;
 
-	while (sqlite3_step(stmt) == SQLITE_ROW) {
-		Category c;
-		c.id = sqlite3_column_int(stmt, 0);
-		c.parent_id = sqlite3_column_int(stmt, 1);
-		const char* text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2)); // reinterpret_cast<const char*> で強制的に std::string に変換
-		if (text != nullptr) {
-			c.name = text; // 内容が有効なら、その文字列を代入。
-		} else {
-			c.name = ""; // NULL なら空文字を代入
-		}
-	
-		out.push_back(c);
-	}
+	    c.id = row.get<int>(0);
+	    c.parent_id = row.get<int>(1);
+	    c.name = row.get<std::string>(2);
+	    c.is_folder = (row.get<int>(3) != 0);
 
-	sqlite3_finalize(stmt);
+	    out.push_back(c);
+	    }
 	return true;
+    } catch (const soci::soci_error& e) {
+	std::cerr << "GetAllCategories Error: " << e.what() << std::endl;
+        return false;
+    }
 }
 
 bool Database::UpdateCategories(int id, const std::string& name){
@@ -313,6 +308,20 @@ bool Database::HideCategory(int id) {
 	int rc = sqlite3_step(stmt);
 	sqlite3_finalize(stmt);
 	return rc == SQLITE_DONE;
+}
+
+bool Database::IsFolder(int id) {
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+	int is_folder = 0;
+	sql << "SELECT is_folder FROM categories WHERE id = :id",
+	    soci::use(id), soci::into(is_folder);
+
+	return (is_folder == 1);
+    } catch (const soci::soci_error& e) {
+	return false;
+    }
 }
 
 bool Database::EditParentId(long long id, long long parent_id) {
