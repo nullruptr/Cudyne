@@ -38,6 +38,7 @@ bool Database::Connect(const std::string& path) { // DB に接続
 	// 外部キー制約を有効化
 	sql << "PRAGMA foreign_keys = ON";
 
+	m_get_path = path;
 	return true;
     } catch (const soci::soci_error& e) {
 	std::cerr << "Connect Eroor: " << e.what() << std::endl;
@@ -111,6 +112,10 @@ bool Database::Initialize(){
 	}
 		
 	return true;	
+}
+
+std::string Database::GetDBPath() const { // 外部からpath 取得
+    return m_get_path;
 }
 
 

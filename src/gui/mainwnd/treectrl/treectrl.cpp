@@ -90,7 +90,7 @@ void CategoryTree::UpdateTreeData() {
 
 	DeleteAllItems(); // ツリーリセット
 
-	wxTreeItemId root = AddRoot("root"); // 起点rootを作成
+	wxTreeItemId root = AddRoot(wxString::FromUTF8(m_db.GetDBPath())); // 起点rootを作成
 	BuildTree(0, root, categories);
 	Expand(root);
 }

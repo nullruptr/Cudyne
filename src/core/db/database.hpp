@@ -13,6 +13,7 @@ public:
 	bool Connect(const std::string& path); // 接続．
 	bool Create(const std::string& path);// 新規作成．接続先パス
 	bool Initialize(); // 初期化処理
+	std::string GetDBPath() const;
 	// --- 書き込み ---
 	bool InsertCategories(int parent_id, const std::string &name); // カテゴリ名，親ID
 	bool InsertRecords(int category_id, const std::string &time_begin, const std::string &time_end); // カテゴリテーブルでのID，開始時刻，終了時刻
@@ -57,4 +58,5 @@ private:
 	sqlite3* db;
 	soci::session sql;
 	std::string path;
+	std::string m_get_path;
 };
