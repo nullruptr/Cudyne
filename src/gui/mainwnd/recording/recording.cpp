@@ -59,18 +59,7 @@ void Recording::OnStartRecordFromBtn(wxCommandEvent& event){
 // 外部から Record を開始する場合。
 void Recording::OnStartRecord(int id, const wxString& name) {
 	m_selected_id = id; // ほかに引き渡す用途
-	long long recordId = this->m_db.StartRecord(m_selected_id);
 	int is_folder = this->m_db.IsFolder(m_selected_id);
-
-	if (recordId == -1) {
-		wxMessageBox(
-				_("Failed to start record"),
-				"Record Error",
-				wxOK | wxICON_ERROR,
-				this
-			    );
-		return;
-	}
 
 	if (is_folder == 1) {
 	    wxMessageBox(
@@ -80,6 +69,18 @@ void Recording::OnStartRecord(int id, const wxString& name) {
 			this
 		    );
 	    return;
+	}
+
+	long long recordId = this->m_db.StartRecord(m_selected_id);
+
+	if (recordId == -1) {
+		wxMessageBox(
+				_("Failed to start record"),
+				"Record Error",
+				wxOK | wxICON_ERROR,
+				this
+			    );
+		return;
 	}
 
 	wxDateTime now = wxDateTime::Now();
