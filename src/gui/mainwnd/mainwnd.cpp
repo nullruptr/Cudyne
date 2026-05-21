@@ -119,7 +119,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Left()
         .Caption(_("Inspector"))
         .Name(wxT("Inspector"))
-        .BestSize(FromDIP(166), -1)
+        .BestSize(FromDIP(275), -1)
         .Layer(1)
 	.Position(0) 
 	.Row(1) // 左側のエリアの 1番目
@@ -130,9 +130,9 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Left()
         .Caption(_("Statistic"))
         .Name(wxT("Statistic"))
-        .BestSize(FromDIP(166), -1)
+        .BestSize(FromDIP(275), -1)
         .Layer(1)
-	.Row(0)
+	.Row(1)
 	.Position(1) 
 	.CloseButton(false) // 閉じるボタン無効
 	); 
