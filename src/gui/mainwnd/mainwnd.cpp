@@ -30,7 +30,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	menuFile->Append(wxID_EXIT, _("Quit\t F12"));
 
 	wxMenu* menuEdit = new wxMenu;
-	menuEdit->Append(ID_MENU_TODO, _("Todo"));
+	menuEdit->Append(ID_MENU_TODO, _("ToDo"));
 
 	wxMenu *menuLegacy = new wxMenu;
 	menuLegacy->Append(ID_TIME_LOG, _("Time Log"));
