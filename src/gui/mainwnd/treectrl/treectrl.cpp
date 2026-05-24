@@ -50,8 +50,8 @@ CategoryTree::CategoryTree(wxWindow* parent, Database &dbRef)
 
     // フォルダアイコンの設定
     m_image_list = new wxImageList(16, 16);
-    m_image_list->Add(wxArtProvider::GetBitmap(wxART_FOLDER, wxART_OTHER, wxSize(16, 16)));
-    m_image_list->Add(wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16)));
+    m_image_list->Add(wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16))); // index 0 = ICON_FILE
+    m_image_list->Add(wxArtProvider::GetBitmap(wxART_FOLDER, wxART_OTHER, wxSize(16, 16)));       // index 1 = ICON_FOLDER
     AssignImageList(m_image_list);
 }
 
@@ -105,7 +105,7 @@ void CategoryTree::BuildTree(
 			wxString displayName = wxString::FromUTF8(c.name.c_str()); // UTF8 で読み込み
 			
 			// アイコンをセット
-			int icon = c.is_folder ? ICON_FILE : ICON_FOLDER;
+			int icon = c.is_folder ? ICON_FOLDER : ICON_FILE;
 
 			wxTreeItemId node = AppendItem(parentNode, displayName, icon, icon, new TreeItemData(c.id)); // 親の場所に子の名前でツリー登録。同時にID(c.id) をデータとして紐付け。
 			BuildTree(c.id, node, categories); // 再起処理。自分のIDとノードを渡して、カテゴリ全件も渡す。子が存在したらぶら下げる。
