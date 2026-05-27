@@ -17,6 +17,8 @@ Controller::Controller(wxWindow* parent, Database &dbRef)
 
 	// --- レンジ ---
 	wxBoxSizer* range_sizer = new wxBoxSizer(wxHORIZONTAL);
+	wxBoxSizer* range_display = new wxBoxSizer(wxHORIZONTAL);
+	wxBoxSizer* range_update = new wxBoxSizer(wxHORIZONTAL);
 	wxStaticText* date_label = new wxStaticText(this, wxID_ANY, _("Range: "));
 	m_date_range = new wxChoice(this, wxID_ANY);
 
@@ -51,13 +53,16 @@ Controller::Controller(wxWindow* parent, Database &dbRef)
 
 	range_sizer->Add(date_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(5));
 	range_sizer->Add(m_date_range, 0, wxALIGN_CENTER_VERTICAL);
-	range_sizer->Add(m_period_display, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
-	range_sizer->Add(m_date_picker_start, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
-	range_sizer->Add(m_date_picker_end, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
-	range_sizer->Add(m_btn_update, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
-	range_sizer->Add(m_cb_auto_update, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
-	sizer->Add(range_sizer, 0, wxALL, FromDIP(10));
-
+	range_display->Add(m_period_display, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
+	range_display->Add(m_date_picker_start, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
+	range_display->Add(m_date_picker_end, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
+	range_update->Add(m_btn_update, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
+	range_update->Add(m_cb_auto_update, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
+	wxBoxSizer* range_group = new wxBoxSizer(wxVERTICAL);
+	range_group->Add(range_sizer,   0, wxBOTTOM, FromDIP(7));
+	range_group->Add(range_display, 0, wxBOTTOM, FromDIP(7));
+	range_group->Add(range_update,  0, 0, 0);
+	sizer->Add(range_group, 0, wxALL, FromDIP(10));
 
 		// --- オフセット操作エリア ---
 	// 3行（年・月・日）× 3列（ラベル・前へ・次へ）のグリッド
