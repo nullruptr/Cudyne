@@ -5,7 +5,7 @@
 #include <wx/regex.h>
 #include "mainwnd.hpp"
 #include "gui/mainwnd/activity_report/activity_report.hpp"
-#include "gui/mainwnd/dashboard/dashboard.hpp"
+#include "gui/mainwnd/controller/controller.hpp"
 #include "gui/time_log/time_log.hpp"
 #include "gui/connect_db/connect_db.hpp"
 #include "gui/mainwnd/treectrl/treectrl.hpp"
@@ -56,7 +56,9 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	Bind(wxEVT_COMMAND_MENU_SELECTED, &Mainwnd::OnCategoryUpdated, this, ID_CATEGORY_UPDATED);
 
 	// Dashboard
-	m_dashboard = new Dashboard(this, db);
+	m_dashboard = new Dashboard(this);
+	// Controller
+	m_controller = new Controller(this, db);
 	// Clock パネルの生成
 	m_clock = new Clock(this);
 	// Recording
@@ -101,10 +103,10 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Name(wxT("treePane"))
         .BestSize(FromDIP(166), -1)
         .Layer(1)
-	.Position(0)
 	.Row(0) // 左側のエリアの 0番目
+	.Position(0)
 	.CloseButton(false) // 閉じるボタン無効
-	); 
+	);
 
 	m_mgr.AddPane(m_activity_report, wxAuiPaneInfo()
         .Right()
@@ -113,7 +115,18 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .BestSize(FromDIP(400), -1)
         .Layer(1)
 	.CloseButton(false) // 閉じるボタン無効
-	); 
+	);
+
+	m_mgr.AddPane(m_controller, wxAuiPaneInfo()
+        .Left()
+        .Caption(_("Controller"))
+        .Name(wxT("Controller"))
+        .BestSize(FromDIP(275), -1)
+        .Layer(1)
+	.Row(1) // 左側のエリアの 1番目
+	.Position(0)
+	.CloseButton(false) // 閉じるボタン無効
+	);
 
 	m_mgr.AddPane(m_inspector, wxAuiPaneInfo()
         .Left()
@@ -121,10 +134,10 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Name(wxT("Inspector"))
         .BestSize(FromDIP(275), -1)
         .Layer(1)
-	.Position(0) 
 	.Row(1) // 左側のエリアの 1番目
+	.Position(1)
 	.CloseButton(false) // 閉じるボタン無効
-	); 
+	);
 
 	m_mgr.AddPane(m_statistic, wxAuiPaneInfo()
         .Left()
@@ -132,8 +145,8 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Name(wxT("Statistic"))
         .BestSize(FromDIP(275), -1)
         .Layer(1)
-	.Row(1)
-	.Position(1) 
+	.Row(1) // 左側のエリアの 1番目
+	.Position(2)
 	.CloseButton(false) // 閉じるボタン無効
 	); 
 
@@ -312,9 +325,9 @@ void Mainwnd::OnStartRecordToRecWnd(wxCommandEvent& event) {
 }
 
 void Mainwnd::OnRecordUpdate(wxCommandEvent& event) { // 表示内容更新 & start time と end time を取得
-	if (m_activity_report && m_dashboard && m_statistic) {
+	if (m_activity_report && m_controller && m_statistic) {
 		wxDateTime start, end;
-		m_dashboard->GetCurrentRange(start, end);
+		m_controller->GetCurrentRange(start, end);
 		m_activity_report->SetPeriodAndRefresh(start, end);
 		m_statistic->GetCurrentRange(start, end);
 	}

@@ -9,6 +9,7 @@
 #include "gui/mainwnd/clock/clock.hpp"
 #include "gui/mainwnd/recording/recording.hpp"
 #include "gui/mainwnd/dashboard/dashboard.hpp"
+#include "gui/mainwnd/controller/controller.hpp"
 #include "gui/mainwnd/activity_report/activity_report.hpp"
 #include "gui/mainwnd/inspector/inspector.hpp"
 #include "gui/mainwnd/statistic/statistic.hpp"
@@ -39,7 +40,7 @@ Mainwnd(wxWindow* parent);
 	void OnDPIChanged(wxDPIChangedEvent& event);
 	Database db;
 	wxString current_DB_Path;
-	void OnCategorySelected(wxCommandEvent& event); // Dashboard のID と CatName の表示更新。Dashboardに渡す
+	void OnCategorySelected(wxCommandEvent& event); // Controller のID と CatName の表示更新。Controllerに渡す
 	void OnStartRecordToRecWnd(wxCommandEvent& event);
 	void OnRecordUpdate(wxCommandEvent& event);
 	void OnCategoryUpdated(wxCommandEvent& event);
@@ -52,6 +53,7 @@ private:
 	Clock* m_clock;
 	Recording* m_recording;
 	Dashboard* m_dashboard;
+	Controller* m_controller;
 	ActivityReport* m_activity_report;
 	Inspector* m_inspector;
 	Statistic* m_statistic;

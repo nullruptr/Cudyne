@@ -69,6 +69,7 @@ set(SOURCES
     src/gui/connect_db/connect_db.cpp
     src/gui/mainwnd/activity_report/activity_report.cpp
     src/gui/mainwnd/clock/clock.cpp
+    src/gui/mainwnd/controller/controller.cpp
     src/gui/mainwnd/dashboard/dashboard.cpp
     src/gui/mainwnd/inspector/inspector.cpp
     src/gui/mainwnd/recording/recording.cpp
