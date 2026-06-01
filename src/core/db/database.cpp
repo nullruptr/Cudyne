@@ -527,6 +527,25 @@ std::string Database::GetCategoriesPath(int id) {
 	return full_path;
 }
 
+// 最終実行時間を取得
+long long Database::GetLastExecuted(int category_id) {
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+	// 時間に long long を使っているのは、2038 年のオーバーフローに対応するため
+	// 加えて、Streak 計算にも使うから、long long にしてる
+	long long result = 0;
+
+	sql <<
+	"SELECT strftime('%s', MAX(time_begin)) FROM records WHERE category_id = :id",
+	soci::use(category_id), soci::into(result);
+
+	return result;
+    } catch (const soci::soci_error& e) {
+	std::cerr << "GetLastExecuted Error: " << e.what() << std::endl;
+        return false;
+    }
+}
 
 void Database::Close() { // 閉じる
 	if (db != nullptr) {

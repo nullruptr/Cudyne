@@ -19,7 +19,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	wxLogMessage("Log System Initialized.");
 	*/
         // notify wxAUI which frame to use
-	SetSize(FromDIP(wxSize(1400, 800)));
+	SetSize(FromDIP(wxSize(1600, 800)));
         m_mgr.SetManagedWindow(this);
 
 	// メニュー内容の設定
@@ -121,7 +121,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Left()
         .Caption(_("Controller"))
         .Name(wxT("Controller"))
-        .BestSize(FromDIP(275), -1)
+        .BestSize(FromDIP(300), -1)
         .Layer(1)
 	.Row(1) // 左側のエリアの 1番目
 	.Position(0)
@@ -132,7 +132,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Left()
         .Caption(_("Inspector"))
         .Name(wxT("Inspector"))
-        .BestSize(FromDIP(275), -1)
+        .BestSize(FromDIP(300), -1)
         .Layer(1)
 	.Row(1) // 左側のエリアの 1番目
 	.Position(1)
@@ -143,7 +143,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Left()
         .Caption(_("Statistic"))
         .Name(wxT("Statistic"))
-        .BestSize(FromDIP(275), -1)
+        .BestSize(FromDIP(300), -1)
         .Layer(1)
 	.Row(1) // 左側のエリアの 1番目
 	.Position(2)

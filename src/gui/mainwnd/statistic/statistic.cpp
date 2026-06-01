@@ -1,4 +1,5 @@
 #include "gui/mainwnd/statistic/statistic.hpp"
+#include "core/utils/format_time.hpp"
 #include <wx/event.h>
 #include <wx/filefn.h>
 
@@ -18,8 +19,8 @@ Statistic::Statistic(wxWindow* parent, Database &dbRef)
 	m_result_total_time_range = new wxStaticText(this, wxID_ANY, _("00:00:00"));
 	wxStaticText* stat_streak = new wxStaticText(this, wxID_ANY, _("Current Streak:"));
 	wxStaticText* result_streak = new wxStaticText(this, wxID_ANY, _("0d"));
-	wxStaticText* stat_last_run = new wxStaticText(this, wxID_ANY, _("Last Executed:"));
-	wxStaticText* result_last_run = new wxStaticText(this, wxID_ANY, _("0000-00-00"));
+	wxStaticText* stat_last_executed = new wxStaticText(this, wxID_ANY, _("Last Executed:"));
+	m_last_executed = new wxStaticText(this, wxID_ANY, ("--"));
 
 	stat_grid->Add(stat_total_time_all, 0, wxALIGN_CENTER_VERTICAL);
 	stat_grid->Add(m_result_total_time_all, 0, wxALIGN_CENTER_VERTICAL);
@@ -27,8 +28,8 @@ Statistic::Statistic(wxWindow* parent, Database &dbRef)
 	stat_grid->Add(m_result_total_time_range, 0, wxALIGN_CENTER_VERTICAL);
 	stat_grid->Add(stat_streak, 0, wxALIGN_CENTER_VERTICAL);
 	stat_grid->Add(result_streak, 0, wxALIGN_CENTER_VERTICAL);
-	stat_grid->Add(stat_last_run, 0, wxALIGN_CENTER_VERTICAL);
-	stat_grid->Add(result_last_run, 0, wxALIGN_CENTER_VERTICAL);
+	stat_grid->Add(stat_last_executed, 0, wxALIGN_CENTER_VERTICAL);
+	stat_grid->Add(m_last_executed, 0, wxALIGN_CENTER_VERTICAL);
 
 	stat_box->Add(stat_grid, 1, wxALL | wxEXPAND, 10);
 	sizer->Add(stat_box, 1, wxALL | wxEXPAND, 5); // ボックスをメインサイザーへ
@@ -48,11 +49,13 @@ void Statistic::OnUpdateStatistic() {
 	// DBへ
 	long long total_sec = m_db.GetTotalTime(m_selected_id, start_utc, end_utc);
 	long long total_sec_all = m_db.GetTotalTime(m_selected_id, start_utc_all, end_utc);
+	long long last_executed = m_db.GetLastExecuted(m_selected_id);
 
 	// 表示
 	// 分と秒は2桁固定
 	m_result_total_time_range->SetLabel(TimeUtils::FormatSeconds(total_sec));
 	m_result_total_time_all->SetLabel(TimeUtils::FormatSeconds(total_sec_all));
+	m_last_executed->SetLabel(TimeUtils::FormatEpochToDate(last_executed));
 }
 
 // Mainwnd から、先にID の見送られてくるので、ID を受け取る

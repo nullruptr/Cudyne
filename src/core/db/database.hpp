@@ -42,6 +42,7 @@ public:
                       std::vector<RecordSummary>& out);
 
 	std::string GetCategoriesPath(int id);
+	long long GetLastExecuted(int category_id);
 
 	void Close(); // DB クローズ処理
 	
