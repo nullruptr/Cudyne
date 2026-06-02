@@ -157,7 +157,7 @@ void Controller::OnRangeChanged(wxCommandEvent& event) {
 	// 時刻を00:00:00にリセットして日付ベースの計算に
 	start.ResetTime();
 	// end は「翌日の00:00:00」
-	end = start + wxDateSpan(0, 0, 1, 0); // +1日
+	end = start + wxDateSpan(0, 0, 0, 1); // +1日
 
 	switch (selIdx) {
 		case RANGE_TODAY:
@@ -209,7 +209,7 @@ void Controller::OnRangeChanged(wxCommandEvent& event) {
 			// 安全のため初期化
 			start.ResetTime();
 			end.ResetTime();
-			end = start + wxDateSpan(0, 0, 1, 0);
+			end = start + wxDateSpan(0, 0, 0, 1);
 			break;
 
 			default:
@@ -229,7 +229,7 @@ void Controller::OnRangeChanged(wxCommandEvent& event) {
 
 		start.ResetTime();
 		end.ResetTime();
-		end += wxDateSpan(0, 0, 1, 0);
+		end += wxDateSpan(0, 0, 0, 1);
 	} else {
 		// Custom 以外の場合の共通処理
 		m_date_picker_start->Hide();
@@ -238,81 +238,91 @@ void Controller::OnRangeChanged(wxCommandEvent& event) {
 	}
 
 
-	wxDateTime display_end = end - wxDateSpan(0, 0, 1, 0);
-	// 表示形式の整形 (例: 2026-04-06)
-	m_period_display->SetLabel(start.FormatISODate() + " - " + display_end.FormatISODate());
+	UpdatePeriodDisplay();
 
 	// m_cb_auto_update が true のとき
 	if (m_cb_auto_update->GetValue()) {
 		wxCommandEvent evt_update;
 		OnUpdateStatistics(evt_update, EventType::FROM_MYSELF);
 	}
+}
 
+void Controller::UpdatePeriodDisplay() {
+	m_period_display->SetLabel(
+		m_current_start.FormatISODate() + " - " + m_current_end.FormatISODate()
+	);
 	this->GetSizer()->Layout();
 }
 
 
 
 void Controller::OnOffsetDate(wxCommandEvent& event, OffsetDateButton btn) {
-    wxDateTime start;
-    wxDateTime end;
-
-    start = m_current_start;
-    end = m_current_end;
-
     switch (btn) {
 	case OffsetDateButton::Y_PREV:
-	case OffsetDateButton::Y_NEXT:
+	case OffsetDateButton::Y_NEXT: {
+	    int dir = (btn == OffsetDateButton::Y_PREV) ? -1 : 1;
 	    if ( // 範囲が同じ年でかつ開始点が01/01、終了点が12/31 の時
-		start.GetYear() == end.GetYear() &&
-		start.GetMonth() == 0 && 
-		start.GetDay() == 1 && 
-		end.GetMonth() == 11 && 
-		end.GetDay() == 31
-	    ) { 
-		if (btn == OffsetDateButton::Y_PREV) {
-		    // 1年前に戻す
-		    start.Subtract(wxDateSpan(1, 0, 0, 0));
-		    end.Subtract(wxDateSpan(1, 0, 0, 0));
-		} else if (btn == OffsetDateButton::Y_NEXT){
-		    // 1年後にする
-		    start.Subtract(wxDateSpan(-1, 0, 0, 0));
-		    end.Subtract(wxDateSpan(-1, 0, 0, 0));
-		} else {
-		    wxMessageBox(_("Offset Error"));
-		    break;
-		}
+		m_current_start.GetYear() == m_current_end.GetYear() &&
+		m_current_start.GetMonth() == wxDateTime::Jan &&
+		m_current_start.GetDay() == 1 &&
+		m_current_end.GetMonth() == wxDateTime::Dec &&
+		m_current_end.GetDay() == 31
+	    ) {
+		// そのまま1年ずらす
+		m_current_start.Add(wxDateSpan(dir, 0, 0, 0));
+		m_current_end.Add(wxDateSpan(dir, 0, 0, 0));
 	    } else {
-		// それ以外の時、終了点の年を開始点に合わせる
+		// それ以外の時、年を揃えて01/01〜12/31 にする
 		if (btn == OffsetDateButton::Y_PREV) {
-		    // 終了年を開始年に合わせる
-		    end.SetYear(start.GetYear());
-		} else if (btn == OffsetDateButton::Y_NEXT){
-		    // 開始年を終了年に合わせる
-		    start.SetYear(end.GetYear());
+		    m_current_end.SetYear(m_current_start.GetYear());
 		} else {
-		    wxMessageBox(_("Offset Error"));
-		    break;
+		    m_current_start.SetYear(m_current_end.GetYear());
 		}
-		// 開始点、終了点の日付をそれぞれ01/01, 12/31 にする。
-		start.SetMonth(wxDateTime::Jan);
-		start.SetDay(1);
-		end.SetMonth(wxDateTime::Dec);
-		end.SetDay(31);
+		m_current_start.SetMonth(wxDateTime::Jan);
+		m_current_start.SetDay(1);
+		m_current_end.SetMonth(wxDateTime::Dec);
+		m_current_end.SetDay(31);
 	    }
-
+	    break;
+	}
 	case OffsetDateButton::M_PREV:
-	case OffsetDateButton::M_NEXT:
-	    if ( // 範囲が同じ年と月で、月初めと月末のとき
-		start.GetYear() == end.GetYear() &&
-		start.GetMonth() == end.GetMonth() &&
-		start.GetDay() == 1 && 
-		end.GetDay() == TimeUtils::LastDayOfMonth(end.GetYear(), end.GetMonth())
-	       )
-	break;
+	case OffsetDateButton::M_NEXT: {
+	    int dir = (btn == OffsetDateButton::M_PREV) ? -1 : 1;
+	    if ( // 範囲が同じ月で、月初めと月末のとき
+		m_current_start.GetYear() == m_current_end.GetYear() &&
+		m_current_start.GetMonth() == m_current_end.GetMonth() &&
+		m_current_start.GetDay() == 1 &&
+		m_current_end.GetDay() == TimeUtils::LastDayOfMonth(m_current_end.GetYear(), m_current_end.GetMonth())
+	    ) {
+		// 1ヶ月ずらして、新しい月の月初〜月末にする
+		m_current_start.Add(wxDateSpan(0, dir, 0, 0));
+		m_current_start.SetDay(1);
+		m_current_end = m_current_start;
+		m_current_end.SetDay(TimeUtils::LastDayOfMonth(
+		    m_current_start.GetYear(), m_current_start.GetMonth()));
+	    } else {
+		// それ以外の時、月を揃えて月初〜月末にする
+		if (btn == OffsetDateButton::M_PREV) {
+		    m_current_end.SetMonth(m_current_start.GetMonth());
+		    m_current_end.SetYear(m_current_start.GetYear());
+		} else {
+		    m_current_start.SetMonth(m_current_end.GetMonth());
+		    m_current_start.SetYear(m_current_end.GetYear());
+		}
+		m_current_start.SetDay(1);
+		m_current_end.SetDay(TimeUtils::LastDayOfMonth(m_current_end.GetYear(), m_current_end.GetMonth()));
+	    }
+	    break;
+	}
+	case OffsetDateButton::D_PREV:
+	case OffsetDateButton::D_NEXT: {
+	    int dir = (btn == OffsetDateButton::D_PREV) ? -1 : 1;
+	    m_current_start.Add(wxDateSpan(0, 0, 0, dir));
+	    m_current_end.Add(wxDateSpan(0, 0, 0, dir));
+	    break;
+	}
     }
-    m_current_start = start;
-    m_current_end = start;
+    UpdatePeriodDisplay();
     // 更新イベントを発火
     wxCommandEvent evt;
     OnUpdateStatistics(evt, EventType::FROM_MYSELF);
@@ -333,12 +343,13 @@ void Controller::OnUpdateStatistics(wxCommandEvent& event, EventType type) {
 	std::string end_utc = m_current_end.ToUTC().Format("%Y-%m-%d %H:%M:%S").ToStdString();
 	// 全範囲の合計時間取得用
 	std::string start_utc_all = "1970-01-01 00:00:00";
+	std::string end_utc_all   = wxDateTime::Now().ToUTC().Format("%Y-%m-%d %H:%M:%S").ToStdString();
 
 	if (m_selected_id != -1)
 	{
 	    // DBへ
 	    long long total_sec = m_db.GetTotalTime(m_selected_id, start_utc, end_utc);
-	    long long total_sec_all = m_db.GetTotalTime(m_selected_id, start_utc_all, end_utc);
+	    long long total_sec_all = m_db.GetTotalTime(m_selected_id, start_utc_all, end_utc_all);
 	};
 
 	// 表示内容更新イベント

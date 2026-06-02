@@ -43,12 +43,13 @@ void Statistic::OnUpdateStatistic() {
 	// 指定された時刻をDBに渡せるようstd::string へ
 	std::string start_utc = m_current_start.ToUTC().Format("%Y-%m-%d %H:%M:%S").ToStdString();
 	std::string end_utc = m_current_end.ToUTC().Format("%Y-%m-%d %H:%M:%S").ToStdString();
-	// 全範囲の合計時間取得用
+	// 全範囲の合計時間取得用（1970〜現在で固定。範囲の終点に依存させない）
 	std::string start_utc_all = "1970-01-01 00:00:00";
+	std::string end_utc_all = wxDateTime::Now().ToUTC().Format("%Y-%m-%d %H:%M:%S").ToStdString();
 
 	// DBへ
 	long long total_sec = m_db.GetTotalTime(m_selected_id, start_utc, end_utc);
-	long long total_sec_all = m_db.GetTotalTime(m_selected_id, start_utc_all, end_utc);
+	long long total_sec_all = m_db.GetTotalTime(m_selected_id, start_utc_all, end_utc_all);
 	long long last_executed = m_db.GetLastExecuted(m_selected_id);
 
 	// 表示

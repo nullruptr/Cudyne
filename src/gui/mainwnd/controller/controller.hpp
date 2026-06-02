@@ -41,6 +41,7 @@ public:
 	void GetCurrentRange(wxDateTime& start, wxDateTime& end) const;
 	void OnUpdateStatistics(wxCommandEvent& event, EventType type);
 	void OnOffsetDate(wxCommandEvent& event, OffsetDateButton btn);
+	void UpdatePeriodDisplay();
 private:
 	Database &m_db;
 	wxStaticText* m_label_ID_num;
