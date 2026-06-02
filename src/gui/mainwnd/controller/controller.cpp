@@ -4,6 +4,7 @@
 #include <string>
 #include <wx/datetime.h>
 #include <wx/event.h>
+#include <wx/msgdlg.h>
 #include <wx/sizer.h>
 #include <wx/string.h>
 #include <wx/textctrl.h>
@@ -118,6 +119,29 @@ Controller::Controller(wxWindow* parent, Database &dbRef)
 		this->OnUpdateStatistics(event, EventType::FROM_MYSELF);
 	});
 
+	// 日付遷移ボタンイベント
+	m_btn_offset_y_prev->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
+	    this->OnOffsetDate(event, OffsetDateButton::Y_PREV);
+	});
+	m_btn_offset_y_prev->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
+	    this->OnOffsetDate(event, OffsetDateButton::Y_PREV);
+	});
+	m_btn_offset_y_next->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
+	    this->OnOffsetDate(event, OffsetDateButton::Y_NEXT);
+	});
+	m_btn_offset_m_prev->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
+	    this->OnOffsetDate(event, OffsetDateButton::M_PREV);
+	});
+	m_btn_offset_m_next->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
+	    this->OnOffsetDate(event, OffsetDateButton::M_NEXT);
+	});
+	m_btn_offset_d_prev->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
+	    this->OnOffsetDate(event, OffsetDateButton::D_PREV);
+	});
+	m_btn_offset_d_next->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
+	    this->OnOffsetDate(event, OffsetDateButton::D_NEXT);
+	});
+
 	// 初回起動時に期間を表示させるためのダミーイベント
 	wxCommandEvent dummy;
 	OnRangeChanged(dummy);
@@ -227,6 +251,72 @@ void Controller::OnRangeChanged(wxCommandEvent& event) {
 	this->GetSizer()->Layout();
 }
 
+
+
+void Controller::OnOffsetDate(wxCommandEvent& event, OffsetDateButton btn) {
+    wxDateTime start;
+    wxDateTime end;
+
+    start = m_current_start;
+    end = m_current_end;
+
+    switch (btn) {
+	case OffsetDateButton::Y_PREV:
+	case OffsetDateButton::Y_NEXT:
+	    if ( // 範囲が同じ年でかつ開始点が01/01、終了点が12/31 の時
+		start.GetYear() == end.GetYear() &&
+		start.GetMonth() == 0 && 
+		start.GetDay() == 1 && 
+		end.GetMonth() == 11 && 
+		end.GetDay() == 31
+	    ) { 
+		if (btn == OffsetDateButton::Y_PREV) {
+		    // 1年前に戻す
+		    start.Subtract(wxDateSpan(1, 0, 0, 0));
+		    end.Subtract(wxDateSpan(1, 0, 0, 0));
+		} else if (btn == OffsetDateButton::Y_NEXT){
+		    // 1年後にする
+		    start.Subtract(wxDateSpan(-1, 0, 0, 0));
+		    end.Subtract(wxDateSpan(-1, 0, 0, 0));
+		} else {
+		    wxMessageBox(_("Offset Error"));
+		    break;
+		}
+	    } else {
+		// それ以外の時、終了点の年を開始点に合わせる
+		if (btn == OffsetDateButton::Y_PREV) {
+		    // 終了年を開始年に合わせる
+		    end.SetYear(start.GetYear());
+		} else if (btn == OffsetDateButton::Y_NEXT){
+		    // 開始年を終了年に合わせる
+		    start.SetYear(end.GetYear());
+		} else {
+		    wxMessageBox(_("Offset Error"));
+		    break;
+		}
+		// 開始点、終了点の日付をそれぞれ01/01, 12/31 にする。
+		start.SetMonth(wxDateTime::Jan);
+		start.SetDay(1);
+		end.SetMonth(wxDateTime::Dec);
+		end.SetDay(31);
+	    }
+
+	case OffsetDateButton::M_PREV:
+	case OffsetDateButton::M_NEXT:
+	    if ( // 範囲が同じ年と月で、月初めと月末のとき
+		start.GetYear() == end.GetYear() &&
+		start.GetMonth() == end.GetMonth() &&
+		start.GetDay() == 1 && 
+		end.GetDay() == TimeUtils::LastDayOfMonth(end.GetYear(), end.GetMonth())
+	       )
+	break;
+    }
+    m_current_start = start;
+    m_current_end = start;
+    // 更新イベントを発火
+    wxCommandEvent evt;
+    OnUpdateStatistics(evt, EventType::FROM_MYSELF);
+}
 
 void Controller::OnUpdateStatistics(wxCommandEvent& event, EventType type) {
 

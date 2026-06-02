@@ -19,6 +19,15 @@ enum RangeIndex {
 	RANGE_CUSTOM
 };
 
+enum class OffsetDateButton {
+    Y_PREV,
+    Y_NEXT,
+    M_PREV,
+    M_NEXT,
+    D_PREV,
+    D_NEXT
+};
+
 // OnUpdateStatistics において、イベントがどこから来たかによって制御を変えるため
 enum class EventType {
 	FROM_MAINWND,
@@ -29,8 +38,9 @@ class Controller : public wxPanel {
 public:
 	Controller(wxWindow* parent, Database& db);
 	void OnRangeChanged(wxCommandEvent& event);
-	void OnUpdateStatistics(wxCommandEvent& event, EventType type);
 	void GetCurrentRange(wxDateTime& start, wxDateTime& end) const;
+	void OnUpdateStatistics(wxCommandEvent& event, EventType type);
+	void OnOffsetDate(wxCommandEvent& event, OffsetDateButton btn);
 private:
 	Database &m_db;
 	wxStaticText* m_label_ID_num;

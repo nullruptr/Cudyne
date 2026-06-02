@@ -1,15 +1,17 @@
-#include "format_time.hpp"
 #include <ctime>
+#include <wx/datetime.h>
+#include "format_time.hpp"
+
 
 namespace TimeUtils {
-	wxString FormatSeconds(long long total_seconds) {
-		long long h = total_seconds / 3600;
-		long long m = (total_seconds % 3600) / 60;
-		long long s = total_seconds % 60;
-		return wxString::Format("%02lld:%02lld:%02lld", h, m, s);
-	}
+    wxString FormatSeconds(long long total_seconds) {
+	    long long h = total_seconds / 3600;
+	    long long m = (total_seconds % 3600) / 60;
+	    long long s = total_seconds % 60;
+	    return wxString::Format("%02lld:%02lld:%02lld", h, m, s);
+    }
 
-	wxString FormatEpochToDate(long long epoch) {
+    wxString FormatEpochToDate(long long epoch) {
 	
 	// 未実行 (レコードなしのとき 0 を返すため)
 	if (epoch == 0) return wxString("--");
@@ -23,5 +25,14 @@ namespace TimeUtils {
 	// (書き込み先buf, サイズを知らせる, フォーマット, std::tm)
 	std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm); 
 	return wxString(buf);
+    }
+
+    int LastDayOfMonth(int year, wxDateTime::Month month) {
+	wxDateTime dt(1, month, year);
+
+	dt += wxDateSpan::Month();
+	dt -= wxDateSpan::Day();
+
+	return dt.GetDay();
     }
 }
