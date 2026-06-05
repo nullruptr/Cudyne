@@ -1,8 +1,18 @@
-# MochiBeta
+# Cudyne
 
-本ソフトウェアは、時間管理やタスクを設定・把握し、フィードバックするためのツールです。
-モチベを維持を支援するソフトになればと思い、Motivator を言い換えて MochiBeta としました。
-現段階では開発途中です。
+**Cu**be + **Dyne** (unit of force, 1 dyn = 10⁻⁵ N)
+
+![C++](https://img.shields.io/badge/C++-00599C?style=flat&logo=c%2B%2B&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows_11-0078D4?style=flat&logo=windows&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+> A dynamic task & time manager.
+
+本ソフトウェアは、時間を管理・記録し、フィードバックするためのツールです。  
+いつ何をしたのかを記録することで、何に時間を使いすぎているのか、あるいは何ができていないのかを数値データとして把握できます。
+
+> [!WARNING]  
+> 現在開発途中です。
 
 ## 動作要件
 
@@ -12,9 +22,8 @@
 
 - [wxWidgets](https://github.com/wxWidgets/wxWidgets/releases/tag/v3.2.8)
 - [SQLite](https://sqlite.org/)
+- [SOCI](https://github.com/SOCI/soci)
 
-## アプリケーションのビルド
+### ビルド
 
-### 環境構築
-
-[myIDE](https://github.com/nullruptr/myIDE)にて、エディタおよび[ビルドツール](https://github.com/nullruptr/myIDE/tree/main/System/mingw)を提供しています。ご活用ください。
+[myIDE](https://github.com/nullruptr/myIDE)にて、エディタを提供しています。また、Docker を用いることで、簡単にコンパイルすることができます。

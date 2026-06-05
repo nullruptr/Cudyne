@@ -84,7 +84,7 @@ void ConnectDB::OnCreateNew(wxCommandEvent &event){
 		this, // 親指定
 		_("Create New SQLite Database"), // タイトルバーに表示される文字列
 		"", // 初期ディレクトリ
-		"mochibeta.db", // デフォルトファイル名
+		"cudyne.db", // デフォルトファイル名
 		"SQLite DB (*.db)|*.db", // 表示名|拡張子|表示名|拡張子
 		wxFD_SAVE | wxFD_OVERWRITE_PROMPT // 開くダイアログ | 存在しないファイルは選択できない
 	);

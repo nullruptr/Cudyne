@@ -19,7 +19,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-project(MochiBeta)
+project(Cudyne)
 
 # --- 2. 探索パスの設定 ---
 if(NOT LINUX_BUILD)
@@ -88,22 +88,22 @@ set(SOURCES
 
 # --- 6. ターゲット ---
 if(LINUX_BUILD)
-    add_executable(MochiBeta ${SOURCES})
+    add_executable(Cudyne ${SOURCES})
 else()
-    add_executable(MochiBeta WIN32 ${SOURCES})
+    add_executable(Cudyne WIN32 ${SOURCES})
 endif()
 
-target_compile_features(MochiBeta PUBLIC cxx_std_14)
+target_compile_features(Cudyne PUBLIC cxx_std_14)
 
 # --- 7. インクルード ---
 if(NOT LINUX_BUILD)
-    target_compile_options(MochiBeta PRIVATE "-finput-charset=UTF-8" "-fexec-charset=UTF-8")
-    target_include_directories(MochiBeta PRIVATE
+    target_compile_options(Cudyne PRIVATE "-finput-charset=UTF-8" "-fexec-charset=UTF-8")
+    target_include_directories(Cudyne PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         /usr/x86_64-w64-mingw32/include
     )
 else()
-    target_include_directories(MochiBeta PRIVATE
+    target_include_directories(Cudyne PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${SQLITE3_INCLUDE_DIRS}
     )
@@ -111,17 +111,17 @@ endif()
 
 # --- 8. リンク ---
 if(NOT LINUX_BUILD)
-    target_link_libraries(MochiBeta
+    target_link_libraries(Cudyne
         ${wxWidgets_LIBRARIES}
         ${SOCI_SQLITE3_LIB}
         ${SOCI_CORE_LIB}
         ${SQLITE3_LIB}
     )
-    set_target_properties(MochiBeta PROPERTIES
+    set_target_properties(Cudyne PROPERTIES
         LINK_FLAGS "-static -static-libgcc -static-libstdc++"
     )
 else()
-    target_link_libraries(MochiBeta
+    target_link_libraries(Cudyne
         ${wxWidgets_LIBRARIES}
         ${SOCI_SQLITE3_LIB}
         ${SOCI_CORE_LIB}
@@ -132,7 +132,7 @@ endif()
 # --- 9. compile_commands.json（Linuxビルド時のみ自動でルートにコピー）---
 if(LINUX_BUILD)
     add_custom_command(
-        TARGET MochiBeta POST_BUILD
+        TARGET Cudyne POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_BINARY_DIR}/compile_commands.json
             ${CMAKE_SOURCE_DIR}/compile_commands.json
