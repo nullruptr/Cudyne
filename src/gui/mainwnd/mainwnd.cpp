@@ -239,6 +239,8 @@ void Mainwnd::OnConnectDB(wxCommandEvent& event){
 			SetStatusText(_("Connected"), 0);
 			SetStatusText(current_DB_Path, 1);
 			m_categoryTree->UpdateTreeData();
+			wxCommandEvent dummy;
+			OnRecordUpdate(dummy);
 		} else {
 			wxMessageBox(_("Connection failed"));
 		}
