@@ -47,7 +47,7 @@ void Inspector::UpdateSelectedCategory(int id, const wxString& name) {
 	} else {
 		m_label_path->SetLabel(wxString::FromUTF8(path));
 	}
-	if (id == 0 && !name.IsEmpty()) {
+	if (id == 0) {
 		ViewCtrl(Status::HIDE);
 	} else {
 		ViewCtrl(Status::SHOW);

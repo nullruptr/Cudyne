@@ -62,15 +62,16 @@ void CategoryTree::OnItemSelected(wxTreeEvent& event) {
 	
 	// 紐づけたツリーのID を取得
 	TreeItemData* data = static_cast<TreeItemData*>(GetItemData(item));
+	wxCommandEvent evt(wxEVT_MENU, ID_CATEGORY_SELECTED);
 	if (data) {
-		wxCommandEvent evt(wxEVT_MENU, ID_CATEGORY_SELECTED);
-		evt.SetInt(data->GetId());            // カテゴリIDを格納
-		evt.SetString(GetItemText(item));     // カテゴリ名を格納
-	        // イベントの発生源を自分に設定
-		evt.SetEventObject(this);
-		// 親ウィンドウへ向かってイベントを投げる
-		wxPostEvent(GetParent(), evt);
+		evt.SetInt(data->GetId());
+		evt.SetString(GetItemText(item));
+	} else {
+		evt.SetInt(0);
+		evt.SetString("");
 	}
+	evt.SetEventObject(this);
+	wxPostEvent(GetParent(), evt);
 }
 
 void CategoryTree::OnUpdateKeyDown(wxKeyEvent& event) { // F5 でアップデート
@@ -251,9 +252,11 @@ void CategoryTree::OnContextMenu(wxContextMenuEvent& event) {
 		int flags;
 		wxTreeItemId item = HitTest(clientPoint, flags);
 
-		// 4. 有効なアイテムの上であれば、それを選択状態にする
+		// 4. 有効なアイテムの上であれば選択、なければメニューを出さない
 		if (item.IsOk()) {
-		SelectItem(item);
+			SelectItem(item);
+		} else {
+			return;
 		}
 	}
 
