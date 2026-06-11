@@ -6,6 +6,7 @@
 #include "mainwnd.hpp"
 #include "gui/mainwnd/activity_report/activity_report.hpp"
 #include "gui/mainwnd/controller/controller.hpp"
+#include "gui/mainwnd/record_viewer/record_viewer.hpp"
 #include "gui/time_log/time_log.hpp"
 #include "gui/connect_db/connect_db.hpp"
 #include "gui/mainwnd/treectrl/treectrl.hpp"
@@ -67,12 +68,32 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	m_categoryTree = new CategoryTree(this, db);
 	// Activity Report
 	m_activity_report = new ActivityReport(this, db);
+	// Record Viewer
+	m_record_viewer = new RecordViewer(this, db);
 	// Inspector
 	m_inspector = new Inspector(this, db);
 	// Statistic
 	m_statistic = new Statistic(this, db);
 
 	m_mgr.AddPane(m_dashboard, wxAuiPaneInfo().CenterPane());
+
+	// AuiNotebook
+	m_right_notebook = new wxAuiNotebook(this, wxID_ANY,
+					     wxDefaultPosition, wxDefaultSize,
+					     wxAUI_NB_TOP | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE);
+	// Notebook に追加
+	m_right_notebook->AddPage(m_activity_report, _("Activity Report"));
+	m_right_notebook->AddPage(m_record_viewer,   _("Record Viewer"));
+
+	// Notebook を aui に登録
+	m_mgr.AddPane(m_right_notebook, wxAuiPaneInfo()
+	    .Right()
+	    .Caption(_("Reports"))
+	    .Name(wxT("RightNotebook"))
+	    .BestSize(FromDIP(400), -1)
+	    .Layer(1)
+	    .CloseButton(false)
+	);
 
 	m_mgr.AddPane(m_clock, wxAuiPaneInfo()
 	    .Name(wxT("clockPane"))      // 内部識別名
@@ -105,15 +126,6 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Layer(1)
 	.Row(0) // 左側のエリアの 0番目
 	.Position(0)
-	.CloseButton(false) // 閉じるボタン無効
-	);
-
-	m_mgr.AddPane(m_activity_report, wxAuiPaneInfo()
-        .Right()
-        .Caption(_("Activity Report"))
-        .Name(wxT("Activity Report"))
-        .BestSize(FromDIP(400), -1)
-        .Layer(1)
 	.CloseButton(false) // 閉じるボタン無効
 	);
 
@@ -329,6 +341,7 @@ void Mainwnd::OnRecordUpdate(wxCommandEvent& event) { // 表示内容更新 & st
 		wxDateTime start, end;
 		m_controller->GetCurrentRange(start, end);
 		m_activity_report->SetPeriodAndRefresh(start, end);
+		m_record_viewer->SetPeriodAndRefresh(start, end);
 		m_statistic->GetCurrentRange(start, end);
 	}
 }

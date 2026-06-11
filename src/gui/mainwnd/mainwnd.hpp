@@ -2,6 +2,7 @@
 #include <wx/math.h>
 #include <wx/wx.h>
 #include <wx/aui/aui.h>
+#include <wx/aui/auibook.h>
 #include <wx/treebase.h>
 #include <wx/treectrl.h>
 #include "core/db/database.hpp"
@@ -13,6 +14,7 @@
 #include "gui/mainwnd/activity_report/activity_report.hpp"
 #include "gui/mainwnd/inspector/inspector.hpp"
 #include "gui/mainwnd/statistic/statistic.hpp"
+#include "gui/mainwnd/record_viewer/record_viewer.hpp"
 #include "gui/todo/todo.hpp"
 
 enum {
@@ -49,12 +51,14 @@ virtual ~Mainwnd();
 
 private:
 	wxAuiManager m_mgr;
+	wxAuiNotebook*  m_right_notebook;
 	CategoryTree* m_categoryTree;
 	Clock* m_clock;
 	Recording* m_recording;
 	Dashboard* m_dashboard;
 	Controller* m_controller;
 	ActivityReport* m_activity_report;
+	RecordViewer* m_record_viewer;
 	Inspector* m_inspector;
 	Statistic* m_statistic;
 	bool m_dpiChanging = false;

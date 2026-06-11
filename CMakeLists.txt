@@ -72,6 +72,7 @@ set(SOURCES
     src/gui/mainwnd/controller/controller.cpp
     src/gui/mainwnd/dashboard/dashboard.cpp
     src/gui/mainwnd/inspector/inspector.cpp
+    src/gui/mainwnd/record_viewer/record_viewer.cpp
     src/gui/mainwnd/recording/recording.cpp
     src/gui/mainwnd/statistic/statistic.cpp
     src/gui/mainwnd/treectrl/treectrl.cpp
