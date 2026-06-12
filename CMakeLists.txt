@@ -62,8 +62,8 @@ endif()
 set(SOURCES
     src/core/clock/now_wxstring.cpp
     src/core/db/database.cpp
-    src/core/db/db_activity_report.cpp
     src/core/db/db_record.cpp
+    src/core/db/db_report.cpp
     src/core/db/db_total.cpp
     src/core/utils/format_time.cpp
     src/gui/connect_db/connect_db.cpp
