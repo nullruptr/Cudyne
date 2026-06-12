@@ -142,8 +142,8 @@ void test_record_list(const std::string& path) {
 	std::cout << "取得件数: " << records.size() << std::endl;
 	for (const auto& r : records) {
 		std::cout << r.id << " | " << r.category_name
-		          << " | " << r.time_begin
-		          << " | " << r.time_end
+		          << " | " << r.time_begin << " (epoch)"
+		          << " | " << r.time_end << " (epoch)"
 		          << " | " << r.total_seconds << "s" << std::endl;
 	}
 	db.Close();

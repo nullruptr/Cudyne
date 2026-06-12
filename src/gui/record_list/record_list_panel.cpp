@@ -35,8 +35,8 @@ void RecordListPanel::LoadRecords(const wxDateTime& start, const wxDateTime& end
         long idx = m_list->InsertItem(m_list->GetItemCount(),
                                       wxString::Format("%d", r.id));
         m_list->SetItem(idx, 1, wxString::FromUTF8(r.category_name));
-        m_list->SetItem(idx, 2, wxString::FromUTF8(r.time_begin));
-        m_list->SetItem(idx, 3, wxString::FromUTF8(r.time_end));
+        m_list->SetItem(idx, 2, TimeUtils::FormatEpochToDate(r.time_begin));
+        m_list->SetItem(idx, 3, TimeUtils::FormatEpochToDate(r.time_end));
         m_list->SetItem(idx, 4, TimeUtils::FormatSeconds(r.total_seconds));
         m_list->SetItemData(idx, (long)r.id);
     }

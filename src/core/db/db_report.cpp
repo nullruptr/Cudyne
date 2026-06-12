@@ -1,6 +1,5 @@
 #include <iostream>
 #include "database.hpp"
-#include "core/utils/format_time.hpp"
 
 std::vector<Database::RecordSummary> Database::GetRecordsByRange(const std::string& start_utc, const std::string& end_utc) {
     std::vector<RecordSummary> results;
@@ -57,7 +56,9 @@ std::vector<Database::Record> Database::GetRecordList(
     std::vector<Record> results;
     try {
         std::string query =
-            "SELECT r.id, r.category_id, c.name, r.time_begin, r.time_end "
+            "SELECT r.id, r.category_id, c.name, "
+            "  strftime('%s', r.time_begin), "
+            "  strftime('%s', r.time_end) "
             "FROM records r "
             "JOIN categories c ON r.category_id = c.id "
             "WHERE r.time_end != '' AND r.time_end > :start AND r.time_begin < :end "
@@ -72,9 +73,9 @@ std::vector<Database::Record> Database::GetRecordList(
             r.id            = (int)row.get<long long>(0);
             r.category_id   = (int)row.get<long long>(1);
             r.category_name = row.get<std::string>(2);
-            r.time_begin    = row.get<std::string>(3);
-            r.time_end      = row.get<std::string>(4);
-            r.total_seconds = TimeUtils::CalcDurationSeconds(r.time_begin, r.time_end);
+            r.time_begin    = std::stoll(row.get<std::string>(3));
+            r.time_end      = std::stoll(row.get<std::string>(4));
+            r.total_seconds = r.time_end - r.time_begin;
             results.push_back(r);
         }
     } catch (const soci::soci_error& e) {

@@ -52,9 +52,9 @@ public:
 	int         id;
 	int         category_id;
 	std::string category_name;
-	std::string time_begin;
-	std::string time_end;
-	int         total_seconds;
+	long long   time_begin;   // UTC epoch
+	long long   time_end;     // UTC epoch
+	long long   total_seconds;
     };
     std::vector<Database::RecordSummary> GetRecordsByRange(const std::string& start_utc, const std::string& end_utc);
     std::vector<Database::Record> GetRecordList(const std::string& start_utc, const std::string& end_utc, int category_id = -1);
