@@ -27,6 +27,19 @@ namespace TimeUtils {
 	return wxString(buf);
     }
 
+    int CalcDurationSeconds(const std::string& begin, const std::string& end) {
+        struct tm tb = {}, te = {};
+        sscanf(begin.c_str(), "%d-%d-%d %d:%d:%d",
+               &tb.tm_year, &tb.tm_mon, &tb.tm_mday,
+               &tb.tm_hour, &tb.tm_min, &tb.tm_sec);
+        sscanf(end.c_str(), "%d-%d-%d %d:%d:%d",
+               &te.tm_year, &te.tm_mon, &te.tm_mday,
+               &te.tm_hour, &te.tm_min, &te.tm_sec);
+        tb.tm_year -= 1900; tb.tm_mon -= 1;
+        te.tm_year -= 1900; te.tm_mon -= 1;
+        return (int)(mktime(&te) - mktime(&tb));
+    }
+
     int LastDayOfMonth(int year, wxDateTime::Month month) {
 	wxDateTime dt(1, month, year);
 

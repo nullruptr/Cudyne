@@ -1,17 +1,25 @@
 // database の接続テストです．CLI 専用です．wxWidgets 側では使いません．
 #include <cstdio>
+#include <ctime>
 #include <ios>
 #include <iostream>
 #include <string>
 #include <limits>
 #include "core/db/database.hpp"
-#include "core/clock/clock.hpp"
+
+static std::string now_utc_iso8601() {
+    time_t t = time(nullptr);
+    struct tm* tm_utc = gmtime(&t);
+    char buf[20];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm_utc);
+    return std::string(buf);
+}
 
 void init(const std::string& path);
 void connect(const std::string& path);
 void inscat(const std::string& path);
 void insrec(const std::string& path);
-void insrec(const std::string& path);
+void test_record_list(const std::string& path);
 
 int main(){
 	std::string path;
@@ -26,6 +34,7 @@ int main(){
 	std::cout << "2." << "DB接続テスト" << std::endl;
 	std::cout << "3." << "カテゴリ登録テスト" << std::endl;
 	std::cout << "4." << "レコードテスト" << std::endl;
+	std::cout << "5." << "GetRecordList テスト" << std::endl;
 	std::cin >> testcase;
 
 	switch (testcase) {
@@ -45,7 +54,10 @@ int main(){
 			std::cout << "レコードテストを開始します．" << std::endl;
 			insrec(path);
 			break;
-
+		case 5:
+			std::cout << "GetRecordList テストを開始します。" << std::endl;
+			test_record_list(path);
+			break;
 	}
 	return 0;
 }
@@ -105,7 +117,7 @@ void inscat(const std::string& path){
 	std::cout << "親のID(なければ0): ";
 	std::cin >> parent_id;
 
-	if (db.InsertCategories(name, parent_id)){
+	if (db.InsertCategories(parent_id, name, false)){
 		std::cout << "登録成功" << std::endl;
 	} else {
 		std::cout << "登録失敗" << std::endl;
@@ -116,9 +128,29 @@ void inscat(const std::string& path){
 }
 
 
+void test_record_list(const std::string& path) {
+	Database db;
+	if (!db.Connect(path)) {
+		std::cout << "DB接続失敗" << std::endl;
+		return;
+	}
+
+	std::string start = "2020-01-01 00:00:00";
+	std::string end   = "2030-01-01 00:00:00";
+
+	auto records = db.GetRecordList(start, end);
+	std::cout << "取得件数: " << records.size() << std::endl;
+	for (const auto& r : records) {
+		std::cout << r.id << " | " << r.category_name
+		          << " | " << r.time_begin
+		          << " | " << r.time_end
+		          << " | " << r.total_seconds << "s" << std::endl;
+	}
+	db.Close();
+}
+
 void insrec(const std::string& path){
 	Database db;
-	Clock cl;
 	if (!db.Connect(path)){ // 接続
 		std::cout << "DB接続失敗" << std::endl;
 		return;
@@ -134,12 +166,12 @@ void insrec(const std::string& path){
 
 	std::cout << "Enter で開始: ";
 	std::cin.get();
-	time_begin = cl.now_utc_iso8601();
+	time_begin = now_utc_iso8601();
 	
 
 	std::cout << "Enter で終了: ";
 	std::cin.get();
-	time_end = cl.now_utc_iso8601();
+	time_end = now_utc_iso8601();
 
 	if (time_end < time_begin) {
 		std::cerr << "時刻逆転エラー" << std::endl;

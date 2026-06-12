@@ -66,10 +66,6 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	m_recording = new Recording(this, db);
 	// TreeCtrl
 	m_categoryTree = new CategoryTree(this, db);
-	// Activity Report
-	m_activity_report = new ActivityReport(this, db);
-	// Record Viewer
-	m_record_viewer = new RecordViewer(this, db);
 	// Inspector
 	m_inspector = new Inspector(this, db);
 	// Statistic
@@ -81,6 +77,12 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	m_right_notebook = new wxAuiNotebook(this, wxID_ANY,
 					     wxDefaultPosition, wxDefaultSize,
 					     wxAUI_NB_TOP | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE);
+
+	// Activity Report
+	m_activity_report = new ActivityReport(m_right_notebook, db);
+	// Record Viewer
+	m_record_viewer = new RecordViewer(m_right_notebook, db);
+
 	// Notebook に追加
 	m_right_notebook->AddPage(m_activity_report, _("Activity Report"));
 	m_right_notebook->AddPage(m_record_viewer,   _("Record Viewer"));

@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include <wx/datetime.h>
 #include <wx/string.h>
 
@@ -9,4 +10,6 @@ namespace TimeUtils {
     wxString FormatEpochToDate(long long epoch);
     // 年と月から月末を算出する
     int LastDayOfMonth (int year, wxDateTime::Month);
+    // "YYYY-MM-DD HH:MM:SS" 形式の UTC 文字列から秒差を計算する
+    int CalcDurationSeconds(const std::string& begin, const std::string& end);
 }

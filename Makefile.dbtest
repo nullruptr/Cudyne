@@ -1,4 +1,14 @@
 # データベーステスト用コンソール
 # make -f Makefile.dbtest dbtest
 dbtest:
-	g++ -I./src -o db_test src/core/clock/clock.cpp src/core/db/db_test.cpp src/core/db/database.cpp -lsqlite3
+	g++ -I./src \
+	    $(shell wx-config --cxxflags) \
+	    -o db_test \
+	    src/core/db/db_test.cpp \
+	    src/core/db/database.cpp \
+	    src/core/db/db_record.cpp \
+	    src/core/db/db_report.cpp \
+	    src/core/db/db_total.cpp \
+	    src/core/utils/format_time.cpp \
+	    -lsqlite3 -lsoci_core -lsoci_sqlite3 \
+	    $(shell wx-config --libs)

@@ -47,9 +47,18 @@ public:
 
 	void Close(); // DB クローズ処理
 	
-	// --- db_activity_report.cpp ---
-	
-std::vector<Database::RecordSummary> GetRecordsByRange(const std::string& start_utc, const std::string& end_utc);
+    // --- db_report.cpp ---
+    struct Record {
+	int         id;
+	int         category_id;
+	std::string category_name;
+	std::string time_begin;
+	std::string time_end;
+	int         total_seconds;
+    };
+    std::vector<Database::RecordSummary> GetRecordsByRange(const std::string& start_utc, const std::string& end_utc);
+    std::vector<Database::Record> GetRecordList(const std::string& start_utc, const std::string& end_utc, int category_id = -1);
+    
 	// --- db_record.cpp ---
 	long long StartRecord(int category_id);
 	bool EndRecord(int record_id);

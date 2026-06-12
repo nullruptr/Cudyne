@@ -1,4 +1,6 @@
+#include <iostream>
 #include "database.hpp"
+#include "core/utils/format_time.hpp"
 
 std::vector<Database::RecordSummary> Database::GetRecordsByRange(const std::string& start_utc, const std::string& end_utc) {
     std::vector<RecordSummary> results;
@@ -45,4 +47,38 @@ std::vector<Database::RecordSummary> Database::GetRecordsByRange(const std::stri
 
 	sqlite3_finalize(stmt);
 	return results;
+}
+
+std::vector<Database::Record> Database::GetRecordList(
+	const std::string& start_utc, // コピーコスト削減のため、参照渡し
+	const std::string& end_utc,
+	int category_id
+	) {
+    std::vector<Record> results;
+    try {
+        std::string query =
+            "SELECT r.id, r.category_id, c.name, r.time_begin, r.time_end "
+            "FROM records r "
+            "JOIN categories c ON r.category_id = c.id "
+            "WHERE r.time_end != '' AND r.time_end > :start AND r.time_begin < :end "
+            "ORDER BY r.time_begin ASC";
+
+        soci::rowset<soci::row> rs = (sql.prepare << query,
+            soci::use(start_utc, "start"),
+            soci::use(end_utc, "end"));
+
+        for (const auto& row : rs) {
+            Record r;
+            r.id            = (int)row.get<long long>(0);
+            r.category_id   = (int)row.get<long long>(1);
+            r.category_name = row.get<std::string>(2);
+            r.time_begin    = row.get<std::string>(3);
+            r.time_end      = row.get<std::string>(4);
+            r.total_seconds = TimeUtils::CalcDurationSeconds(r.time_begin, r.time_end);
+            results.push_back(r);
+        }
+    } catch (const soci::soci_error& e) {
+        std::cerr << "GetRecordList Error: " << e.what() << std::endl;
+    }
+    return results;
 }
