@@ -146,14 +146,14 @@ std::string Database::GetDBPath() const { // 外部からpath 取得
 //
 // -------
 
-bool Database::InsertCategories(int parent_id, const std::string &name){
+bool Database::InsertCategories(int parent_id, const std::string &name, bool is_folder){
 	if (db == nullptr){ // DB が開いていなかったら，抜ける
 		return false;
 	}
 
 	// ? はプレースホルダ（後で値を流し込む場所）
 	// categories に VALUES (?, ?) を INSERT する定義文．
-	const char* sql = "INSERT INTO categories (name, parent_id) VALUES (?, ?);";
+	const char* sql = "INSERT INTO categories (name, parent_id, is_folder) VALUES (?, ?, ?);";
 
 	// "stmt" というポインタ変数をスタックに確保
 	sqlite3_stmt* stmt = nullptr;
@@ -186,6 +186,7 @@ bool Database::InsertCategories(int parent_id, const std::string &name){
 	// 	1. 2. は上記と同じ
 	// 	3. バインドする整数値
 	sqlite3_bind_int(stmt, 2, parent_id);
+	sqlite3_bind_int(stmt, 3, is_folder);
 
 	// 3. 実行
 	int rc = sqlite3_step(stmt);
@@ -257,6 +258,19 @@ bool Database::GetAllCategories(std::vector<Category> &out){ // 全カテゴリ�
 	std::cerr << "GetAllCategories Error: " << e.what() << std::endl;
         return false;
     }
+}
+
+int Database::GetParentId(int id) {
+    int parent_id = 0;
+    try {
+        sql << "SELECT parent_id FROM categories WHERE id = :id",
+            soci::use(id),
+            soci::into(parent_id);
+    } catch (const soci::soci_error& e) {
+	std::cerr << "GetParentId Error: " << e.what() << std::endl;
+	return 0;
+    }
+    return parent_id;
 }
 
 bool Database::UpdateCategories(int id, const std::string& name){

@@ -126,8 +126,13 @@ void CategoryTree::OnCreateNewCategory(wxCommandEvent &event){
 	int parent_db_id = 0;
 	if (parent.IsOk()){
 		TreeItemData* parentData = (TreeItemData*)GetItemData(parent);
-		if (parentData) { // データがあるとき(nullptr出ないとき)
-			parent_db_id = parentData->GetId();
+		if (parentData) {
+			int selected_id = parentData->GetId();
+			if (m_db.IsFolder(selected_id)) {
+				parent_db_id = selected_id;
+			} else {
+				parent_db_id = m_db.GetParentId(selected_id);
+			}
 		}
 		// parentData が nullptr (rootノード)なら、parent_db_id = 0 のまま
 	}

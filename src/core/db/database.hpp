@@ -15,7 +15,7 @@ public:
 	bool Initialize(); // 初期化処理
 	std::string GetDBPath() const;
 	// --- 書き込み ---
-	bool InsertCategories(int parent_id, const std::string &name); // カテゴリ名，親ID
+	bool InsertCategories(int parent_id, const std::string &name, bool is_folder); // カテゴリ名，親ID，フォルダ
 	bool InsertRecords(int category_id, const std::string &time_begin, const std::string &time_end); // カテゴリテーブルでのID，開始時刻，終了時刻
 	struct Category{
 		int id;
@@ -24,6 +24,7 @@ public:
 		int is_folder;
 	};
 	bool GetAllCategories(std::vector<Category>& out);
+	int  GetParentId(int id);
 	bool UpdateCategories(int id, const std::string& name);
 	// ------
 	bool HasRecords(int category_id);   // 記録の存在確認

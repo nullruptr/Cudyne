@@ -18,4 +18,5 @@ private:
 	Database& m_db;
 	int m_parentDbId;
 	int m_editId; // 0で新規、それ以外なら編集モード
+	bool m_is_folder = false; // 作るものがフォルダか否か
 };
