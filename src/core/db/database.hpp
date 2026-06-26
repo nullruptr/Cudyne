@@ -44,7 +44,9 @@ public:
 
 	std::string GetCategoriesPath(int id);
 	long long GetLastExecuted(int category_id);
-
+	int GetCategoryIdByRecordId(int record_id); // Record ID から、Category ID を取得
+	std::string GetCategoryName(int category_id); // Category ID から、名前を取得
+	std::string GetMemoByRecordId(int record_id); // Record ID から、Memo を取得
 	void Close(); // DB クローズ処理
 	
     // --- db_report.cpp ---

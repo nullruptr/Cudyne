@@ -78,6 +78,7 @@ set(SOURCES
     src/gui/mainwnd/treectrl/treectrl.cpp
     src/gui/mainwnd/mainwnd.cpp
     src/gui/record/record_window.cpp
+    src/gui/record_list/edit_record_dlg.cpp
     src/gui/record_list/record_frame.cpp
     src/gui/record_list/record_list_panel.cpp
     src/gui/time_log/edit_category.cpp

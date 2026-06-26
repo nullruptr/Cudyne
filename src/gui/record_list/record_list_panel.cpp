@@ -1,5 +1,6 @@
 #include "record_list_panel.hpp"
 #include "core/utils/format_time.hpp"
+#include "edit_record_dlg.hpp"
 
 RecordListPanel::RecordListPanel(wxWindow* parent, Database& dbRef)
     : wxPanel(parent, wxID_ANY), m_db(dbRef)
@@ -48,5 +49,10 @@ void RecordListPanel::OnListSelect(wxListEvent& event) {
 }
 
 void RecordListPanel::OnListDoubleClick(wxListEvent& event) {
-    // TODO: 編集ダイアログを開く
+    long item = event.GetIndex();
+    int record_id = (int)m_list->GetItemData(item);
+
+    EditRecordDlg* dlg = EditRecordDlg::ForUpdate(this, m_db, record_id);
+    dlg->ShowModal();
+    dlg->Destroy();
 }

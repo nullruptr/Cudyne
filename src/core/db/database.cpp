@@ -561,6 +561,53 @@ long long Database::GetLastExecuted(int category_id) {
     }
 }
 
+int Database::GetCategoryIdByRecordId(int record_id) {
+    if (sql.get_backend() == nullptr) return -1;
+
+    int result = 0;
+
+    try {
+	sql <<
+	"SELECT category_id FROM records WHERE id = :id",
+	soci::use(record_id), soci::into(result);
+    } catch (const soci::soci_error& e) {
+	std::cerr << "GetCategoryIdByRecordId Error: " << e.what() << std::endl;
+        return -1;
+    }
+    return result;
+}
+
+std::string Database::GetCategoryName(int category_id) {
+    if (sql.get_backend() == nullptr) return "";
+
+    std::string result = "";
+
+    try {
+	sql <<
+	"SELECT name FROM categories WHERE id = :id",
+	soci::use(category_id), soci::into(result);
+    } catch (const soci::soci_error& e) {
+	std::cerr << "GetCategoryName Error: " << e.what() << std::endl;
+        return "";
+    }
+    return result;
+}
+
+std::string Database::GetMemoByRecordId(int record_id) {
+    if (sql.get_backend() == nullptr) return "";
+
+    std::string result = "";
+
+    try {
+	sql <<
+	"SELECT memo FROM records WHERE id = :id",
+	soci::use(record_id), soci::into(result);
+    } catch (const soci::soci_error& e) {
+	std::cerr << "GetMemoByRecordId Error: " << e.what() << std::endl;
+        return "";
+    }
+    return result;
+}
 void Database::Close() { // 閉じる
 	if (db != nullptr) {
 		sqlite3_close_v2(db);
