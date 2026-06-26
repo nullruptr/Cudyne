@@ -125,6 +125,11 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
 	m_tc_end_ss->SetValue(end.ss);
     }
 
+    // ForNew のとき Update を無効化
+    if (m_record_id == -1) {
+	m_radio_box->Enable(1, false); // index 1 = Update
+    }
+
     // ラジオボタンの状態によって、Record ID の表示を変える
     m_radio_box->Bind(wxEVT_RADIOBOX, [this](wxCommandEvent& e) {
     if (e.GetSelection() == 0) { // New

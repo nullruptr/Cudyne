@@ -5,6 +5,7 @@
 #include "gui/mainwnd/mainwnd.hpp"
 #include "treectrl.hpp"
 #include "gui/time_log/tree_item_data.hpp"
+#include "gui/record_list/edit_record_dlg.hpp"
 
 CategoryTree::CategoryTree(wxWindow* parent, Database &dbRef) 
 	: wxTreeCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
@@ -23,9 +24,16 @@ CategoryTree::CategoryTree(wxWindow* parent, Database &dbRef)
 		wxEVT_MENU,
 		&CategoryTree::OnCreateNewCategory,
 		this,
-		ID_CREATE	
+		ID_CREATE_NEW_CATEGORY	
 	);
 	//wxID_MENUのメニューにおいて、wxID_EDITが呼ばれたら、CategoryTree::OnEditItemを呼び出すよう指示。
+
+	Bind(
+		wxEVT_MENU,
+		&CategoryTree::OnCreateNewRecord,
+		this,
+		ID_CREATE_NEW_RECORD	
+	);
 
 	Bind(
 		wxEVT_MENU,
@@ -154,6 +162,26 @@ void CategoryTree::OnCreateNewCategory(wxCommandEvent &event){
 	
 }
 
+void CategoryTree::OnCreateNewRecord(wxCommandEvent& event) {
+    // 現在選択されているアイテムを取得
+    wxTreeItemId item = GetSelection();
+
+    if (!item.IsOk()) return; 
+    TreeItemData* data = (TreeItemData*)GetItemData(item); 
+    if (!data) return;
+    int id = data->GetId();
+
+    // フォルダか否か判定
+    if (m_db.IsFolder(id) == 1) {
+	wxMessageBox(_("Failed to create new record because you selected folder"), "Error", wxOK | wxICON_ERROR);
+	return;
+    }
+
+    EditRecordDlg* dlg = EditRecordDlg::ForNew(this, m_db, id);
+    dlg->ShowModal();
+    dlg->Destroy();
+}
+
 void CategoryTree::OnEditParentId(wxCommandEvent& event) {
 	wxTreeItemId item = GetSelection(); // 選択されたアイテム情報取得
 
@@ -267,7 +295,8 @@ void CategoryTree::OnContextMenu(wxContextMenuEvent& event) {
 
 	// 右クリックメニューの作成
 	wxMenu menu;
-	menu.Append(ID_CREATE, _("Create New Category"));
+	menu.Append(ID_CREATE_NEW_CATEGORY, _("Create New Category"));
+	menu.Append(ID_CREATE_NEW_RECORD, _("Create New Record"));
 	menu.Append(wxID_EDIT, _("Edit"));
 	menu.Append(ID_MOVE, _("Move"));
 	menu.Append(wxID_DELETE, _("Delete"));

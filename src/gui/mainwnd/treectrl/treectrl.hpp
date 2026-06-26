@@ -21,6 +21,7 @@ public:
 			const std::vector<Database::Category> &categories
 		      );
 	void OnCreateNewCategory(wxCommandEvent& event);
+	void OnCreateNewRecord(wxCommandEvent& event);
 	void OnEditParentId(wxCommandEvent& event); // parent id の編集
 	void OnEditItem(wxCommandEvent& event);
 	void OnDeleteItem(wxCommandEvent& event); // イベント削除
@@ -37,6 +38,7 @@ private:
 
 enum{
 	ID_TREE_EDIT,
-	ID_CREATE,
+	ID_CREATE_NEW_CATEGORY,
+	ID_CREATE_NEW_RECORD,
 	ID_MOVE
 };
