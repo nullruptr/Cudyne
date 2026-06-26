@@ -173,7 +173,7 @@ void CategoryTree::OnCreateNewRecord(wxCommandEvent& event) {
 
     // フォルダか否か判定
     if (m_db.IsFolder(id) == 1) {
-	wxMessageBox(_("Failed to create new record because you selected folder"), "Error", wxOK | wxICON_ERROR);
+	wxMessageBox(_("Cannot create a record for a folder. Please select a task."), "Error", wxOK | wxICON_ERROR);
 	return;
     }
 
