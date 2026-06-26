@@ -1,5 +1,6 @@
 #pragma once
 #include <wx/wx.h>
+#include <wx/datectrl.h>
 #include "core/db/database.hpp"
 
 class EditRecordDlg : public wxDialog {
@@ -18,4 +19,14 @@ private:
     wxStaticText* m_st_category_path_ref;
     wxStaticText* m_st_record_id_ref;
     wxRadioBox* m_radio_box;
+
+    wxDatePickerCtrl* m_dp_start;
+    wxDatePickerCtrl* m_dp_end;
+    wxTextCtrl* m_tc_start_hhmm;
+    wxTextCtrl* m_tc_start_ss;
+    wxTextCtrl* m_tc_end_hhmm;
+    wxTextCtrl* m_tc_end_ss;
+
+
+    void OnCancel(wxCommandEvent& WXUNUSED(event)); // キャンセル
 };

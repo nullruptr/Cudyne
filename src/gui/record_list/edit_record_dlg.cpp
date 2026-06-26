@@ -1,4 +1,5 @@
 #include "edit_record_dlg.hpp"
+#include <wx/event.h>
 #include <wx/sizer.h>
 #include <wx/string.h>
 
@@ -75,6 +76,29 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
 
     sizer->Add(m_radio_box, 0, wxALL | wxEXPAND, FromDIP(5));
 
+    // 日付選択
+    wxFlexGridSizer* time_sizer = new wxFlexGridSizer(2, 4, FromDIP(5), FromDIP(5));
+
+    m_dp_start      = new wxDatePickerCtrl(this, wxID_ANY);
+    m_tc_start_hhmm = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(50, -1)), wxTE_PROCESS_ENTER);
+    m_tc_start_ss   = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(35, -1)), wxTE_PROCESS_ENTER);
+
+    m_dp_end        = new wxDatePickerCtrl(this, wxID_ANY);
+    m_tc_end_hhmm   = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(50, -1)), wxTE_PROCESS_ENTER);
+    m_tc_end_ss     = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(35, -1)), wxTE_PROCESS_ENTER);
+
+    time_sizer->Add(new wxStaticText(this, wxID_ANY, _("Start Time: ")), 0, wxALIGN_CENTER_VERTICAL);
+    time_sizer->Add(m_dp_start,      0, wxALIGN_CENTER_VERTICAL);
+    time_sizer->Add(m_tc_start_hhmm, 0, wxALIGN_CENTER_VERTICAL);
+    time_sizer->Add(m_tc_start_ss,   0, wxALIGN_CENTER_VERTICAL);
+
+    time_sizer->Add(new wxStaticText(this, wxID_ANY, _("End Time: ")),   0, wxALIGN_CENTER_VERTICAL);
+    time_sizer->Add(m_dp_end,        0, wxALIGN_CENTER_VERTICAL);
+    time_sizer->Add(m_tc_end_hhmm,   0, wxALIGN_CENTER_VERTICAL);
+    time_sizer->Add(m_tc_end_ss,     0, wxALIGN_CENTER_VERTICAL);
+
+    sizer->Add(time_sizer, 0, wxALL | wxEXPAND, FromDIP(5));
+
     // メモ
     wxTextCtrl* memo = new wxTextCtrl(this, wxID_ANY, "",
     wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
@@ -85,5 +109,32 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
     }
     sizer->Add(memo, 1, wxALL | wxEXPAND, FromDIP(5));
 
+    // ボタン (下部)
+    wxBoxSizer* bottom_sizer = new wxBoxSizer(wxHORIZONTAL); // 下部ボタン用サイザ
+    
+    wxButton* btn_save = new wxButton(
+		    this,
+		    wxID_ANY,
+		    _("Save")
+		    );
+
+    wxButton* btn_cancel = new wxButton(
+		    this,
+		    wxID_EXIT,
+		    _("Cancel")
+		    );
+
+    bottom_sizer->AddStretchSpacer(1); // 下部に余白を追加
+    bottom_sizer->Add(btn_save, 0, wxALL, FromDIP(5));
+    bottom_sizer->Add(btn_cancel, 0, wxALL, FromDIP(5));
+
+    sizer->Add(bottom_sizer, 0, wxEXPAND);
+
     SetSizer(sizer);
+
+    btn_cancel->Bind(wxEVT_BUTTON, &EditRecordDlg::OnCancel, this); 
+}
+
+void EditRecordDlg::OnCancel(wxCommandEvent& WXUNUSED(event)){
+    Close(true);
 }
