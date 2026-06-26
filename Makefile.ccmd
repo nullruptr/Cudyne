@@ -3,6 +3,6 @@
 ccmd:
 	rm -rf build-linux
 	mkdir build-linux
-	cd build-linux
-	cmake .. -DLINUX_BUILD=ON
+	cd build-linux && \
+	cmake .. -DLINUX_BUILD=ON && \
 	cmake --build .
