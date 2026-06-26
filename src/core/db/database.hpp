@@ -8,6 +8,15 @@
 
 class Database {
 public:
+    struct Record {
+	int         id;
+	int         category_id;
+	std::string category_name;
+	long long   time_begin;   // UTC epoch
+	long long   time_end;     // UTC epoch
+	long long   total_seconds;
+    };
+
 	Database();
 	~Database(); // 安全のため，Close()を呼んでる．
 	bool Connect(const std::string& path); // 接続．
@@ -47,17 +56,10 @@ public:
 	int GetCategoryIdByRecordId(int record_id); // Record ID から、Category ID を取得
 	std::string GetCategoryName(int category_id); // Category ID から、名前を取得
 	std::string GetMemoByRecordId(int record_id); // Record ID から、Memo を取得
+	Database::Record GetTimeByRecordId(int record_id); // Record ID から、開始時刻と終了時刻を取得
 	void Close(); // DB クローズ処理
 	
     // --- db_report.cpp ---
-    struct Record {
-	int         id;
-	int         category_id;
-	std::string category_name;
-	long long   time_begin;   // UTC epoch
-	long long   time_end;     // UTC epoch
-	long long   total_seconds;
-    };
     std::vector<Database::RecordSummary> GetRecordsByRange(const std::string& start_utc, const std::string& end_utc);
     std::vector<Database::Record> GetRecordList(const std::string& start_utc, const std::string& end_utc, int category_id = -1);
     

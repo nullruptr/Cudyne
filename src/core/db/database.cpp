@@ -608,6 +608,28 @@ std::string Database::GetMemoByRecordId(int record_id) {
     }
     return result;
 }
+
+Database::Record Database::GetTimeByRecordId(int record_id) {
+    if (sql.get_backend() == nullptr) return {};
+
+    Database::Record result;
+    std::string begin_str, end_str;
+
+    try {
+	sql <<
+	"SELECT strftime('%s', time_begin), strftime('%s', time_end) FROM records WHERE id = :id",
+	soci::use(record_id),
+	soci::into(begin_str),
+	soci::into(end_str);
+	result.time_begin = std::stoll(begin_str);
+	result.time_end = std::stoll(end_str);
+    } catch (const soci::soci_error& e) {
+	std::cerr << "GetTimeByRecordId Error: " << e.what() << std::endl;
+        return {};
+    }
+    return result;
+}
+
 void Database::Close() { // 閉じる
 	if (db != nullptr) {
 		sqlite3_close_v2(db);

@@ -1,4 +1,6 @@
 #include "edit_record_dlg.hpp"
+#include "core/utils/format_time.hpp"
+#include "core/db/database.hpp"
 #include <wx/event.h>
 #include <wx/sizer.h>
 #include <wx/string.h>
@@ -102,12 +104,25 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
     // メモ
     wxTextCtrl* memo = new wxTextCtrl(this, wxID_ANY, "",
     wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+    sizer->Add(memo, 1, wxALL | wxEXPAND, FromDIP(5));
+
+    // Update モードの時
     if (m_record_id != -1) {
 	memo->SetValue(wxString::FromUTF8(m_db.GetMemoByRecordId(m_record_id)));
-	// 合わせて、状態をUpdateにする
-	m_radio_box->SetSelection(1);
+	m_radio_box->SetSelection(1); // Update ラジオボタンを選択
+
+	Database::Record rec = m_db.GetTimeByRecordId(m_record_id);
+
+	TimeUtils::ParsedTime begin = TimeUtils::ParseEpoch(rec.time_begin);
+	m_dp_start->SetValue(begin.date);
+	m_tc_start_hhmm->SetValue(begin.hhmm);
+	m_tc_start_ss->SetValue(begin.ss);
+
+	TimeUtils::ParsedTime end = TimeUtils::ParseEpoch(rec.time_end);
+	m_dp_end->SetValue(end.date);
+	m_tc_end_hhmm->SetValue(end.hhmm);
+	m_tc_end_ss->SetValue(end.ss);
     }
-    sizer->Add(memo, 1, wxALL | wxEXPAND, FromDIP(5));
 
     // ボタン (下部)
     wxBoxSizer* bottom_sizer = new wxBoxSizer(wxHORIZONTAL); // 下部ボタン用サイザ
