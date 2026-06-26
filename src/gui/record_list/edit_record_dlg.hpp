@@ -27,6 +27,7 @@ private:
     wxTextCtrl* m_tc_end_hhmm;
     wxTextCtrl* m_tc_end_ss;
 
+    wxTextCtrl* m_tc_memo;
 
     void OnSave(wxCommandEvent& WXUNUSED(event)); // 保存
     void OnCancel(wxCommandEvent& WXUNUSED(event)); // キャンセル

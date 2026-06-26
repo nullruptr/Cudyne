@@ -56,7 +56,7 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
     wxStaticText* st_category_id = new wxStaticText(this, wxID_ANY, _("Category ID: "));
     m_st_category_id_ref = new wxStaticText(this, wxID_ANY, wxString::Format("%d", m_category_id));
     wxStaticText* st_record_id = new wxStaticText(this, wxID_ANY, _("Record ID: "));
-    m_st_record_id_ref = new wxStaticText(this, wxID_ANY, wxString::Format("%d", m_record_id));
+    m_st_record_id_ref = new wxStaticText(this, wxID_ANY, "-");
 
     info_sizer->Add(st_category_name, 0, wxALIGN_CENTER_VERTICAL);
     info_sizer->Add(m_st_category_name_ref, 0, wxALIGN_CENTER_VERTICAL);
@@ -102,14 +102,15 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
     sizer->Add(time_sizer, 0, wxALL | wxEXPAND, FromDIP(5));
 
     // メモ
-    wxTextCtrl* memo = new wxTextCtrl(this, wxID_ANY, "",
+    m_tc_memo = new wxTextCtrl(this, wxID_ANY, "",
     wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
-    sizer->Add(memo, 1, wxALL | wxEXPAND, FromDIP(5));
+    sizer->Add(m_tc_memo, 1, wxALL | wxEXPAND, FromDIP(5));
 
     // Update モードの時
     if (m_record_id != -1) {
-	memo->SetValue(wxString::FromUTF8(m_db.GetMemoByRecordId(m_record_id)));
+	m_tc_memo->SetValue(wxString::FromUTF8(m_db.GetMemoByRecordId(m_record_id)));
 	m_radio_box->SetSelection(1); // Update ラジオボタンを選択
+	m_st_record_id_ref->SetLabel(wxString::Format("%d", m_record_id)); // record_id を反映
 
 	Database::Record rec = m_db.GetTimeByRecordId(m_record_id);
 
@@ -123,6 +124,15 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
 	m_tc_end_hhmm->SetValue(end.hhmm);
 	m_tc_end_ss->SetValue(end.ss);
     }
+
+    // ラジオボタンの状態によって、Record ID の表示を変える
+    m_radio_box->Bind(wxEVT_RADIOBOX, [this](wxCommandEvent& e) {
+    if (e.GetSelection() == 0) { // New
+        m_st_record_id_ref->SetLabel("-");
+    } else { // Update
+        m_st_record_id_ref->SetLabel(wxString::Format("%d", m_record_id));
+    }
+});
 
     // ボタン (下部)
     wxBoxSizer* bottom_sizer = new wxBoxSizer(wxHORIZONTAL); // 下部ボタン用サイザ
@@ -187,7 +197,33 @@ void EditRecordDlg::OnSave(wxCommandEvent& event) {
         wxMessageBox(_("Please enter valid time"), "Error", wxOK | wxICON_WARNING);
         return;
     }
-    // TODO:保存処理へ
+
+    std::string str_start = TimeUtils::BuildUTCString(m_dp_start->GetValue(), m_tc_start_hhmm->GetValue(), m_tc_start_ss->GetValue());
+    std::string str_end   = TimeUtils::BuildUTCString(m_dp_end->GetValue(),   m_tc_end_hhmm->GetValue(),   m_tc_end_ss->GetValue());
+    std::string str_memo = m_tc_memo->GetValue().utf8_string();
+
+    if (str_start >= str_end) {
+	wxMessageBox(_("End time must be after start time"), "Error", wxOK | wxICON_WARNING);
+	return;
+    }
+
+    switch (m_radio_box->GetSelection()) {
+    case 0: // New
+	if (!m_db.InsertRecords(m_category_id, str_start, str_end, str_memo)) {
+	    wxMessageBox(_("Failed to save"), "Error", wxOK | wxICON_ERROR);
+	    return;
+	}
+	break;
+    case 1: // Update
+	if (!m_db.UpdateRecords(m_record_id, str_start, str_end, str_memo)) {
+	    wxMessageBox(_("Failed to save"), "Error", wxOK | wxICON_ERROR);
+	    return;
+	}
+	break;
+    default:
+        break;
+    }
+    Close(true);
 }
 
 void EditRecordDlg::OnCancel(wxCommandEvent& WXUNUSED(event)){

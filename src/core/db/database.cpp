@@ -202,12 +202,12 @@ bool Database::InsertCategories(int parent_id, const std::string &name, bool is_
 	return true;
 }
 
-bool Database::InsertRecords(int category_id, const std::string &time_begin, const std::string &time_end){
+bool Database::InsertRecords(int category_id, const std::string &time_begin, const std::string &time_end, const std::string &memo){
 	if (db == nullptr){ 
 		return false;
 	}
 
-	const char* sql = "INSERT INTO records (category_id, time_begin, time_end) VALUES (?, ?, ?);";
+	const char* sql = "INSERT INTO records (category_id, time_begin, time_end, memo) VALUES (?, ?, ?, ?);";
 
 	sqlite3_stmt* stmt = nullptr;
 
@@ -220,6 +220,7 @@ bool Database::InsertRecords(int category_id, const std::string &time_begin, con
 	sqlite3_bind_int(stmt, 1, category_id);
 	sqlite3_bind_text(stmt, 2, time_begin.c_str(), -1, SQLITE_TRANSIENT);
 	sqlite3_bind_text(stmt, 3, time_end.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 4, memo.c_str(), -1, SQLITE_TRANSIENT);
 
 	// 実行
 	int rc = sqlite3_step(stmt);
@@ -231,6 +232,22 @@ bool Database::InsertRecords(int category_id, const std::string &time_begin, con
 
 	sqlite3_finalize(stmt); // stmt 解法
 	return true;
+}
+
+bool Database::UpdateRecords(int record_id, const std::string& time_begin, const std::string& time_end, const std::string& memo) {
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+        sql << "UPDATE records SET time_begin = :begin, time_end = :end, memo = :memo WHERE id = :id",
+            soci::use(time_begin, "begin"),
+            soci::use(time_end,   "end"),
+            soci::use(memo,   "memo"),
+            soci::use(record_id,  "id");
+    } catch (const soci::soci_error& e) {
+        std::cerr << "UpdateRecord Error: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
 }
 
 bool Database::GetAllCategories(std::vector<Category> &out){ // 全カテゴリ取得

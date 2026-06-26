@@ -79,4 +79,18 @@ namespace TimeUtils {
         if (val < 0 || val > 59) return "";
         return wxString::Format("%02d", val);
     }
+
+    std::string BuildUTCString(const wxDateTime& date, const wxString& hhmm, const wxString& ss) {
+    long hh = 0, mm = 0, sec = 0;
+    hhmm.BeforeFirst(':').ToLong(&hh);
+    hhmm.AfterFirst(':').ToLong(&mm);
+    ss.ToLong(&sec);
+
+    wxDateTime dt = date;
+    dt.SetHour(hh);
+    dt.SetMinute(mm);
+    dt.SetSecond(sec);
+
+    return dt.ToUTC().Format("%Y-%m-%d %H:%M:%S").ToStdString();
+}
 }

@@ -21,4 +21,6 @@ namespace TimeUtils {
     wxString ParseHHMM(const wxString& input);
     // "30" -> "30", 不正な値は空文字を返す
     wxString ParseSS(const wxString& input);
+    // DatePicker の日付と hhmm, ss 文字列から UTC の std::string を作る
+    std::string BuildUTCString(const wxDateTime& date, const wxString& hhmm, const wxString& ss);
 }
