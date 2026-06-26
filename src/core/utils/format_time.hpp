@@ -17,4 +17,8 @@ namespace TimeUtils {
     wxString FormatEpochToDate(long long epoch);
     // 年と月から月末を算出する
     int LastDayOfMonth (int year, wxDateTime::Month);
+    // "1300" -> "13:00", 不正な値は空文字を返す
+    wxString ParseHHMM(const wxString& input);
+    // "30" -> "30", 不正な値は空文字を返す
+    wxString ParseSS(const wxString& input);
 }

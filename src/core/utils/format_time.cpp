@@ -53,4 +53,30 @@ namespace TimeUtils {
 
 	return dt.GetDay();
     }
+
+    wxString ParseHHMM(const wxString& input) {
+        if (input.Find(':') != wxNOT_FOUND) {
+            wxString hh_str = input.BeforeFirst(':');
+            wxString mm_str = input.AfterFirst(':');
+            long hh = 0, mm = 0;
+            if (!hh_str.ToLong(&hh) || !mm_str.ToLong(&mm)) return "";
+            if (hh < 0 || hh > 23) return "";
+            if (mm < 0 || mm > 59) return "";
+            return wxString::Format("%02d:%02d", hh, mm);
+        }
+        long val = 0;
+        if (!input.ToLong(&val)) return "";
+        int h = val / 100;
+        int m = val % 100;
+        if (h < 0 || h > 23) return "";
+        if (m < 0 || m > 59) return "";
+        return wxString::Format("%02d:%02d", h, m);
+    }
+
+    wxString ParseSS(const wxString& input) {
+        long val = 0;
+        if (!input.ToLong(&val)) return "";
+        if (val < 0 || val > 59) return "";
+        return wxString::Format("%02d", val);
+    }
 }

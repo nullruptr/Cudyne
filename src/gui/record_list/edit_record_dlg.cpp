@@ -145,11 +145,71 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
 
     sizer->Add(bottom_sizer, 0, wxEXPAND);
 
+    
     SetSizer(sizer);
+    CenterOnParent(); // 親ウィンドウの真ん中に表示する
 
-    btn_cancel->Bind(wxEVT_BUTTON, &EditRecordDlg::OnCancel, this); 
+    btn_save->Bind(wxEVT_BUTTON, &EditRecordDlg::OnSave, this);
+    btn_cancel->Bind(wxEVT_BUTTON, &EditRecordDlg::OnCancel, this);
+
+    // 時刻入力変換
+    auto on_hhmm_enter = [this](wxCommandEvent& e) {
+        OnValidateHHMM(dynamic_cast<wxTextCtrl*>(e.GetEventObject()));
+    };
+    auto on_hhmm_focus = [this](wxFocusEvent& e) {
+        OnValidateHHMM(dynamic_cast<wxTextCtrl*>(e.GetEventObject()));
+        e.Skip();
+    };
+    m_tc_start_hhmm->Bind(wxEVT_TEXT_ENTER, on_hhmm_enter);
+    m_tc_end_hhmm->Bind(wxEVT_TEXT_ENTER, on_hhmm_enter);
+    m_tc_start_hhmm->Bind(wxEVT_KILL_FOCUS, on_hhmm_focus);
+    m_tc_end_hhmm->Bind(wxEVT_KILL_FOCUS, on_hhmm_focus);
+
+    // 秒入力変換
+    auto on_ss_enter = [this](wxCommandEvent& e) {
+        OnValidateSS(dynamic_cast<wxTextCtrl*>(e.GetEventObject()));
+    };
+    auto on_ss_focus = [this](wxFocusEvent& e) {
+        OnValidateSS(dynamic_cast<wxTextCtrl*>(e.GetEventObject()));
+        e.Skip();
+    };
+    m_tc_start_ss->Bind(wxEVT_TEXT_ENTER, on_ss_enter);
+    m_tc_end_ss->Bind(wxEVT_TEXT_ENTER, on_ss_enter);
+    m_tc_start_ss->Bind(wxEVT_KILL_FOCUS, on_ss_focus);
+    m_tc_end_ss->Bind(wxEVT_KILL_FOCUS, on_ss_focus);
+}
+
+void EditRecordDlg::OnSave(wxCommandEvent& event) {
+    if (m_tc_start_hhmm->GetValue().IsEmpty() ||
+        m_tc_start_ss->GetValue().IsEmpty()   ||
+        m_tc_end_hhmm->GetValue().IsEmpty()   ||
+        m_tc_end_ss->GetValue().IsEmpty()) {
+        wxMessageBox(_("Please enter valid time"), "Error", wxOK | wxICON_WARNING);
+        return;
+    }
+    // TODO:保存処理へ
 }
 
 void EditRecordDlg::OnCancel(wxCommandEvent& WXUNUSED(event)){
     Close(true);
+}
+
+void EditRecordDlg::OnValidateHHMM(wxTextCtrl* tc) {
+    wxString result = TimeUtils::ParseHHMM(tc->GetValue());
+    if (result.IsEmpty()) {
+        wxMessageBox(_("Invalid time"), "Error", wxOK | wxICON_WARNING);
+        tc->SetValue("");
+    } else {
+        tc->SetValue(result);
+    }
+}
+
+void EditRecordDlg::OnValidateSS(wxTextCtrl* tc) {
+    wxString result = TimeUtils::ParseSS(tc->GetValue());
+    if (result.IsEmpty()) {
+        wxMessageBox(_("Invalid seconds"), "Error", wxOK | wxICON_WARNING);
+        tc->SetValue("");
+    } else {
+        tc->SetValue(result);
+    }
 }

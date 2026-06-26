@@ -28,5 +28,8 @@ private:
     wxTextCtrl* m_tc_end_ss;
 
 
+    void OnSave(wxCommandEvent& WXUNUSED(event)); // 保存
     void OnCancel(wxCommandEvent& WXUNUSED(event)); // キャンセル
+    void OnValidateHHMM(wxTextCtrl* tc);
+    void OnValidateSS(wxTextCtrl* tc);
 };
