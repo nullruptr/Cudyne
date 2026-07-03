@@ -31,6 +31,7 @@ private:
 
     void OnSave(wxCommandEvent& WXUNUSED(event)); // 保存
     void OnCancel(wxCommandEvent& WXUNUSED(event)); // キャンセル
+    void OnSelCategory(wxCommandEvent& WXUNUSED(event)); // カテゴリ選択
     void OnValidateHHMM(wxTextCtrl* tc);
     void OnValidateSS(wxTextCtrl* tc);
 };

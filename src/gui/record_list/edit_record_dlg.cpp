@@ -4,6 +4,7 @@
 #include <wx/event.h>
 #include <wx/sizer.h>
 #include <wx/string.h>
+#include <wx/wx.h>
 
 // ファクトリメソッドパターン
 // New or Update で場合分け
@@ -47,8 +48,10 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
 
     // info
+    wxBoxSizer* sel_category_sizer = new wxBoxSizer(wxHORIZONTAL);
     wxFlexGridSizer* info_sizer = new wxFlexGridSizer(4, 2, FromDIP(5), FromDIP(5));
 
+    wxButton* btn_sel_category = new wxButton(this, wxID_ANY, _("Select Category"));
     wxStaticText* st_category_name = new wxStaticText(this, wxID_ANY, _("Category Name: "));
     m_st_category_name_ref = new wxStaticText(this, wxID_ANY, wxString::FromUTF8(m_db.GetCategoryName(m_category_id)));
     wxStaticText* st_category_path = new wxStaticText(this, wxID_ANY, _("Category Path: "));
@@ -58,6 +61,7 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
     wxStaticText* st_record_id = new wxStaticText(this, wxID_ANY, _("Record ID: "));
     m_st_record_id_ref = new wxStaticText(this, wxID_ANY, "-");
 
+    sel_category_sizer->Add(btn_sel_category, 0, wxALIGN_CENTER_VERTICAL);
     info_sizer->Add(st_category_name, 0, wxALIGN_CENTER_VERTICAL);
     info_sizer->Add(m_st_category_name_ref, 0, wxALIGN_CENTER_VERTICAL);
     info_sizer->Add(st_category_path, 0, wxALIGN_CENTER_VERTICAL);
@@ -67,7 +71,10 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
     info_sizer->Add(st_record_id, 0, wxALIGN_CENTER_VERTICAL);
     info_sizer->Add(m_st_record_id_ref, 0, wxALIGN_CENTER_VERTICAL);
 
+    sizer->Add(sel_category_sizer, 0, wxALL | wxEXPAND, FromDIP(5));
     sizer->Add(info_sizer, 0, wxALL | wxEXPAND, FromDIP(5));
+
+    btn_sel_category->Bind(wxEVT_BUTTON, &EditRecordDlg::OnSelCategory, this);
 
     // 状態
     wxArrayString choices;
@@ -233,6 +240,10 @@ void EditRecordDlg::OnSave(wxCommandEvent& event) {
 
 void EditRecordDlg::OnCancel(wxCommandEvent& WXUNUSED(event)){
     Close(true);
+}
+
+void EditRecordDlg::OnSelCategory(wxCommandEvent& WXUNUSED(event)) {
+    
 }
 
 void EditRecordDlg::OnValidateHHMM(wxTextCtrl* tc) {
