@@ -132,9 +132,10 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
 	m_tc_end_ss->SetValue(end.ss);
     }
 
-    // ForNew のとき Update を無効化
+    // ForNew のとき Update, カテゴリ選択ボタンを無効化
     if (m_record_id == -1) {
 	m_radio_box->Enable(1, false); // index 1 = Update
+	btn_sel_category->Enable(false);
     }
 
     // ラジオボタンの状態によって、Record ID の表示を変える
@@ -243,7 +244,13 @@ void EditRecordDlg::OnCancel(wxCommandEvent& WXUNUSED(event)){
 }
 
 void EditRecordDlg::OnSelCategory(wxCommandEvent& WXUNUSED(event)) {
-    
+    SelCategoryDlg dlg(this, m_db);
+    if (dlg.ShowModal() == wxID_OK) {
+        m_category_id = dlg.GetSelectedCategoryId();
+        m_st_category_name_ref->SetLabel(wxString::FromUTF8(m_db.GetCategoryName(m_category_id)));
+        m_st_category_path_ref->SetLabel(wxString::FromUTF8(m_db.GetCategoriesPath(m_category_id)));
+        m_st_category_id_ref->SetLabel(wxString::Format("%d", m_category_id));
+    }
 }
 
 void EditRecordDlg::OnValidateHHMM(wxTextCtrl* tc) {

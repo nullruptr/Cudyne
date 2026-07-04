@@ -2,6 +2,7 @@
 #include <wx/wx.h>
 #include <wx/datectrl.h>
 #include "core/db/database.hpp"
+#include "gui/common/sel_category_dlg/sel_category_dlg.hpp"
 
 class EditRecordDlg : public wxDialog {
 public:
@@ -11,6 +12,9 @@ public:
 private:
     EditRecordDlg(wxWindow* parent, Database& db, int m_category_id, int m_record_id);
     Database& m_db;
+
+    SelCategoryDlg* m_sel_category_dlg;
+
     int m_category_id;
     int m_record_id;
 
