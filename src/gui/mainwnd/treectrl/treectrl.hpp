@@ -3,8 +3,8 @@
 #include <wx/image.h>
 #include <wx/wx.h>
 #include <wx/treectrl.h>
-#include <wx/imaglist.h>
 #include <wx/artprov.h>
+#include <wx/bmpbndl.h>
 #include "core/db/database.hpp"
 #include "gui/time_log/edit_category.hpp"
 #include "gui/time_log/edit_parent_id.hpp"
@@ -29,7 +29,6 @@ public:
 private:
 	Database& m_db;
 	wxTreeItemId m_context_item;
-	wxImageList* m_image_list;
 	enum {
 	    ICON_FILE = 0,
 	    ICON_FOLDER = 1

@@ -56,11 +56,11 @@ CategoryTree::CategoryTree(wxWindow* parent, Database &dbRef)
 		wxID_DELETE
 	);
 
-    // フォルダアイコンの設定
-    m_image_list = new wxImageList(16, 16);
-    m_image_list->Add(wxArtProvider::GetBitmap(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16))); // index 0 = ICON_FILE
-    m_image_list->Add(wxArtProvider::GetBitmap(wxART_FOLDER, wxART_OTHER, wxSize(16, 16)));       // index 1 = ICON_FOLDER
-    AssignImageList(m_image_list);
+    // フォルダアイコンの設定（wxBitmapBundle により DPI 変更に自動追従）
+    wxVector<wxBitmapBundle> images;
+    images.push_back(wxArtProvider::GetBitmapBundle(wxART_NORMAL_FILE, wxART_OTHER, wxSize(16, 16))); // index 0 = ICON_FILE
+    images.push_back(wxArtProvider::GetBitmapBundle(wxART_FOLDER, wxART_OTHER, wxSize(16, 16)));       // index 1 = ICON_FOLDER
+    SetImages(images);
 }
 
 void CategoryTree::OnItemSelected(wxTreeEvent& event) {
