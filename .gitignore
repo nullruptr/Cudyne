@@ -11,6 +11,9 @@
 # res
 *.res
 
+# windres preprocessor temp files
+/RC*
+
 # compile_commands
 compile_commands.json
 compile_commands.txt
