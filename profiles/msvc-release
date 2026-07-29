@@ -1,0 +1,15 @@
+[settings]
+arch=x86_64
+build_type=Release
+compiler=msvc
+compiler.cppstd=14
+compiler.runtime=static
+compiler.runtime_type=Release
+compiler.version=193
+os=Windows
+
+[conf]
+# 日本語環境 (コードページ 932) では、UTF-8 のソースファイル (コメント内の非ASCII文字等) を
+# 誤って解釈し "予期しない #endif" 等のビルドエラーになることがあるため、常に UTF-8 として扱わせる。
+tools.build:cflags=["-utf-8"]
+tools.build:cxxflags=["-utf-8"]

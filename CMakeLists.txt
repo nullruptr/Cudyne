@@ -2,13 +2,16 @@ cmake_minimum_required(VERSION 3.14)
 
 # --- 1. クロスコンパイル設定 ---
 # LINUX_BUILD=ON のときはネイティブLinuxビルド（clangd用）
+# MSVC_BUILD=ON のときは Conan + MSVC ビルド（Windows ネイティブ）
+# どちらも OFF のときは既定の MinGW クロスビルド
 option(LINUX_BUILD "Build for Linux (for clangd)" OFF)
+option(MSVC_BUILD "Build for Windows using MSVC + Conan" OFF)
 
-if(LINUX_BUILD)
+if(LINUX_BUILD OR MSVC_BUILD)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
-if(NOT LINUX_BUILD)
+if(NOT LINUX_BUILD AND NOT MSVC_BUILD)
     set(CMAKE_SYSTEM_NAME Windows)
     set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
     set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
@@ -21,12 +24,17 @@ endif()
 
 project(Cudyne)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-D_DEBUG)
+endif()
+
 # --- 2. 探索パスの設定 ---
-if(NOT LINUX_BUILD)
+if(MSVC_BUILD)
+    # Conan の CMakeDeps/CMakeToolchain が生成した設定をそのまま利用する
+elseif(NOT LINUX_BUILD)
     # MinGW向け
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(WX_ROOT_PATH "/usr/x86_64-w64-mingw32/debug")
-        add_definitions(-D_DEBUG)
     else()
         set(WX_ROOT_PATH "/usr/x86_64-w64-mingw32/release")
     endif()
@@ -42,11 +50,18 @@ if(NOT LINUX_BUILD)
 endif()
 
 # --- 3. wxWidgets ---
-find_package(wxWidgets COMPONENTS core base propgrid aui REQUIRED)
-include(${wxWidgets_USE_FILE})
+if(MSVC_BUILD)
+    find_package(wxWidgets CONFIG REQUIRED)
+else()
+    find_package(wxWidgets COMPONENTS core base propgrid aui REQUIRED)
+    include(${wxWidgets_USE_FILE})
+endif()
 
 # --- 4. ライブラリ探索 ---
-if(NOT LINUX_BUILD)
+if(MSVC_BUILD)
+    find_package(SQLite3 CONFIG REQUIRED)
+    find_package(SOCI CONFIG REQUIRED)
+elseif(NOT LINUX_BUILD)
     find_library(SQLITE3_LIB sqlite3 REQUIRED)
     find_library(SOCI_CORE_LIB   soci_core   REQUIRED)
     find_library(SOCI_SQLITE3_LIB soci_sqlite3 REQUIRED)
@@ -101,7 +116,18 @@ endif()
 target_compile_features(Cudyne PUBLIC cxx_std_14)
 
 # --- 7. インクルード ---
-if(NOT LINUX_BUILD)
+if(MSVC_BUILD)
+    target_include_directories(Cudyne PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+    )
+    target_compile_options(Cudyne PRIVATE /utf-8)
+    target_compile_definitions(Cudyne PRIVATE UNICODE _UNICODE)
+    set_property(TARGET Cudyne PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    # resource.rc (wx/msw/wx.rc) が DPI 対応マニフェストを埋め込むため、
+    # MSVC リンカ既定のマニフェスト自動生成を無効化する（競合すると DPI 対応が無効になり、
+    # 4K 環境でぼやける原因になる）。
+    target_link_options(Cudyne PRIVATE "/MANIFEST:NO")
+elseif(NOT LINUX_BUILD)
     target_compile_options(Cudyne PRIVATE "-finput-charset=UTF-8" "-fexec-charset=UTF-8")
     target_include_directories(Cudyne PRIVATE
         ${CMAKE_SOURCE_DIR}/src
@@ -115,7 +141,14 @@ else()
 endif()
 
 # --- 8. リンク ---
-if(NOT LINUX_BUILD)
+if(MSVC_BUILD)
+    target_link_libraries(Cudyne
+        wxWidgets::wxWidgets
+        SOCI::soci_sqlite3_static
+        SOCI::soci_core_static
+        SQLite::SQLite3
+    )
+elseif(NOT LINUX_BUILD)
     target_link_libraries(Cudyne
         ${wxWidgets_LIBRARIES}
         ${SOCI_SQLITE3_LIB}

@@ -18,6 +18,9 @@
 compile_commands.json
 compile_commands.txt
 
+# Conan (MSVC ビルド時に生成される、環境依存の絶対パスを含むファイル)
+CMakeUserPresets.json
+
 
 #.gitignore_hidden_message
 .gitignore_hidden_message

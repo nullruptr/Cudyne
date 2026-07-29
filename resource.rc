@@ -1,3 +1,8 @@
 // resource.rc
+// wxUSE_RC_MANIFEST は MinGW (windres) では __GNUC__ 判定により自動定義されるが、
+// MSVC の rc.exe では自動定義されないため明示的に指定する必要がある。
+#ifndef wxUSE_RC_MANIFEST
+    #define wxUSE_RC_MANIFEST 1
+#endif
 #define wxUSE_DPI_AWARE_MANIFEST 2 // Per-Monitor v2 を有効にする
 #include <wx/msw/wx.rc> // UI の見た目を改善するために必要

@@ -1,0 +1,50 @@
+# MSVC + Conan 用ビルド (Windows ネイティブ)
+# 実行は "Developer PowerShell for VS 2022" から行うこと。
+#   make -f Makefile.msvc release
+#   make -f Makefile.msvc debug
+#   make -f Makefile.msvc compdb   (Neovim/clangd 用の compile_commands.json を生成)
+
+RELEASE_CONAN_DIR := build/release
+DEBUG_CONAN_DIR   := build/debug
+COMPDB_CONAN_DIR  := build/compiledb-conan
+COMPDB_DIR        := build/compiledb
+
+.PHONY: release debug compdb clean
+
+release:
+	poetry run conan install . --output-folder=$(RELEASE_CONAN_DIR) \
+		-pr:h=profiles/msvc-release -pr:b=profiles/msvc-build --build=missing
+	cmake -S . -B $(RELEASE_CONAN_DIR)/build -G "Visual Studio 17 2022" -A x64 -T v143 \
+		-DCMAKE_TOOLCHAIN_FILE=$(RELEASE_CONAN_DIR)/build/generators/conan_toolchain.cmake \
+		-DCMAKE_POLICY_DEFAULT_CMP0091=NEW \
+		-DMSVC_BUILD=ON
+	cmake --build $(RELEASE_CONAN_DIR)/build --config Release
+
+debug:
+	poetry run conan install . --output-folder=$(DEBUG_CONAN_DIR) \
+		-pr:h=profiles/msvc-debug -pr:b=profiles/msvc-build --build=missing
+	cmake -S . -B $(DEBUG_CONAN_DIR)/build -G "Visual Studio 17 2022" -A x64 -T v143 \
+		-DCMAKE_TOOLCHAIN_FILE=$(DEBUG_CONAN_DIR)/build/generators/conan_toolchain.cmake \
+		-DCMAKE_POLICY_DEFAULT_CMP0091=NEW \
+		-DMSVC_BUILD=ON
+	cmake --build $(DEBUG_CONAN_DIR)/build --config Debug
+
+# clangd (Neovim) 用の compile_commands.json を生成する。
+# Visual Studio ジェネレータは CMAKE_EXPORT_COMPILE_COMMANDS 非対応のため Ninja で別途生成する。
+# conan_toolchain.cmake は既定で CMAKE_GENERATOR_PLATFORM=x64 を設定し Ninja と非互換のため、
+# Ninja 向けに generator=Ninja を指定した専用の toolchain を別 output-folder に生成する。
+# NOTE: cl.exe / rc.exe / ninja.exe が PATH に必要なため、"Developer PowerShell for VS 2022" から実行すること。
+compdb:
+	poetry run conan install . --output-folder=$(COMPDB_CONAN_DIR) \
+		-pr:h=profiles/msvc-release -pr:b=profiles/msvc-build --build=missing \
+		-c tools.cmake.cmaketoolchain:generator=Ninja
+	cmake -E rm -rf $(COMPDB_DIR)
+	cmake -S . -B $(COMPDB_DIR) -G Ninja \
+		-DCMAKE_TOOLCHAIN_FILE=$(COMPDB_CONAN_DIR)/build/Release/generators/conan_toolchain.cmake \
+		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+		-DMSVC_BUILD=ON
+	cmake --build $(COMPDB_DIR)
+	cmake -E copy $(COMPDB_DIR)/compile_commands.json ./compile_commands.json
+
+clean:
+	cmake -E rm -rf build

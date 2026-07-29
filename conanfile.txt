@@ -1,0 +1,17 @@
+[requires]
+wxwidgets/3.2.10
+sqlite3/3.53.3
+soci/4.1.2
+
+[options]
+wxwidgets/*:shared=False
+sqlite3/*:shared=False
+soci/*:shared=False
+soci/*:with_sqlite3=True
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[layout]
+cmake_layout
