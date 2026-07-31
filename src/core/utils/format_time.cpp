@@ -138,10 +138,12 @@ namespace TimeUtils {
         bool overdue = diff < 0;
         long long abs_diff = overdue ? -diff : diff;
 
-        long long h = abs_diff / 3600;
-        long long m = (abs_diff % 3600) / 60;
-        long long s = abs_diff % 60;
+        long long days = abs_diff / 86400;
+        long long rem  = abs_diff % 86400;
+        long long h = rem / 3600;
+        long long m = (rem % 3600) / 60;
+        long long s = rem % 60;
 
-        return wxString::Format("%s%02lld:%02lld:%02lld", overdue ? "-" : "", h, m, s);
+        return wxString::Format("%s%lldd %02lld:%02lld:%02lld", overdue ? "-" : "", days, h, m, s);
     }
 }

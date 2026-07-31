@@ -171,6 +171,11 @@ wxColour ToDo::ComputeRowColor(const Database::ToDo& todo, long long now_epoch) 
         if (diff < 0)         return wxColour(250, 205, 205); // Overdue(超過): 薄い赤
         if (diff < 24 * 3600) return wxColour(255, 243, 205); // Due soon(24時間以内): 薄い黄
     }
+
+    if (!todo.time_begin.empty() && now_epoch < TimeUtils::ParseUTCStringToEpoch(todo.time_begin)) {
+        return wxColour(192, 255, 255); // Start Time より前: 水色
+    }
+
     return wxColour(255, 255, 255); // 通常: 白
 }
 
@@ -248,7 +253,7 @@ void ToDo::RenderFromCache() {
         m_list->SetItem(idx, 1,  has_category ? wxString::Format("%d", todo.category_id) : "-");
         m_list->SetItem(idx, 2,  has_category ? wxString::FromUTF8(m_db.GetCategoryName(todo.category_id))  : "-");
         m_list->SetItem(idx, 3,  has_category ? wxString::FromUTF8(m_db.GetCategoriesPath(todo.category_id)) : "-");
-        m_list->SetItem(idx, 4,  todo.status == 1 ? _("Done") : _("Pending"));
+        m_list->SetItem(idx, 4,  todo.status == 1 ? _("✔ Done") : _("○ Pending"));
         m_list->SetItem(idx, 5,  wxString::Format("%d", todo.priority));
         m_list->SetItem(idx, 6,  wxString::FromUTF8(todo.todo_name));
         m_list->SetItem(idx, 7,  TimeUtils::FormatUTCStringToLocal(todo.time_begin));
