@@ -100,6 +100,7 @@ set(SOURCES
     src/gui/time_log/edit_category.cpp
     src/gui/time_log/edit_parent_id.cpp
     src/gui/time_log/time_log.cpp
+    src/gui/todo/edit_todo_dlg.cpp
     src/gui/todo/todo.cpp
     src/main.cpp
     # resource.rc はLinuxビルドでは除外

@@ -3,16 +3,17 @@
 #include <wx/dataview.h>
 #include "core/db/database.hpp"
 
-class Todo : public wxFrame{
+class ToDo : public wxFrame{
 
 public:
-	Todo(wxWindow* parent, Database& db);
+	ToDo(wxWindow* parent, Database& db);
 private:
 	Database &m_db;
 	wxDataViewListCtrl* m_dvlc;
-	wxButton* m_btn_pending;
-	wxButton* m_btn_done;
-	wxButton* m_btn_all;
+    wxChoice* m_choiceCondition;
 	wxButton* m_btn_add;
 	wxButton* m_btn_edit;
+
+	void RefreshList(); // m_choiceCondition の選択状態に応じて一覧を再取得・再描画
+	void OnConditionChanged(wxCommandEvent& WXUNUSED(event));
 };

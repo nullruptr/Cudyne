@@ -86,6 +86,7 @@ bool Database::Initialize(){
 		"priority INTEGER,"
 		"todo_name TEXT NOT NULL,"
 		"start_time TEXT,"
+        "target_end TEXT,"
 		"deadline TEXT,"
 		"completion_date TEXT,"
 		"memo TEXT"
@@ -646,6 +647,115 @@ Database::Record Database::GetTimeByRecordId(int record_id) {
         return {};
     }
     return result;
+}
+
+bool Database::InsertToDo(const ToDo& todo) {
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+        sql << "INSERT INTO todo (category_id, status, priority, todo_name, start_time, target_end, deadline, completion_date, memo) "
+               "VALUES (:category_id, :status, :priority, :todo_name, :start_time, :target_end, :deadline, :completion_date, :memo)",
+            soci::use(todo.category_id, "category_id"),
+            soci::use(todo.status, "status"),
+            soci::use(todo.priority, "priority"),
+            soci::use(todo.todo_name, "todo_name"),
+            soci::use(todo.time_begin, "start_time"),
+            soci::use(todo.target_end, "target_end"),
+            soci::use(todo.deadline, "deadline"),
+            soci::use(todo.completion_date, "completion_date"),
+            soci::use(todo.memo, "memo");
+    } catch (const soci::soci_error& e) {
+        std::cerr << "InsertToDo Error: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool Database::UpdateToDo(const ToDo& todo) {
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+        sql << "UPDATE todo SET category_id = :category_id, status = :status, priority = :priority, "
+               "todo_name = :todo_name, start_time = :start_time, target_end = :target_end, "
+               "deadline = :deadline, completion_date = :completion_date, memo = :memo "
+               "WHERE id = :todo_id",
+            soci::use(todo.category_id, "category_id"),
+            soci::use(todo.status, "status"),
+            soci::use(todo.priority, "priority"),
+            soci::use(todo.todo_name, "todo_name"),
+            soci::use(todo.time_begin, "start_time"),
+            soci::use(todo.target_end, "target_end"),
+            soci::use(todo.deadline, "deadline"),
+            soci::use(todo.completion_date, "completion_date"),
+            soci::use(todo.memo, "memo"),
+            soci::use(todo.todo_id, "todo_id");
+    } catch (const soci::soci_error& e) {
+        std::cerr << "UpdateToDo Error: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+std::vector<Database::ToDo> Database::GetTodoList(ToDoFilter filter) {
+    std::vector<ToDo> results;
+    if (sql.get_backend() == nullptr) return results;
+
+    try {
+        int status_filter = static_cast<int>(filter);
+        soci::rowset<soci::row> rs = (sql.prepare <<
+            "SELECT id, category_id, status, priority, todo_name, start_time, target_end, deadline, completion_date, memo "
+            "FROM todo WHERE (:status = -1 OR status = :status) "
+            "ORDER BY priority DESC, deadline ASC",
+            soci::use(status_filter, "status"));
+
+        for (const auto& row : rs) {
+            ToDo t;
+            t.todo_id         = (int)row.get<long long>(0);
+            t.category_id     = (int)row.get<long long>(1);
+            t.status          = (int)row.get<long long>(2);
+            t.priority        = row.get_indicator(3) == soci::i_null ? 0  : (int)row.get<long long>(3);
+            t.todo_name       = row.get<std::string>(4);
+            t.time_begin      = row.get_indicator(5) == soci::i_null ? "" : row.get<std::string>(5);
+            t.target_end      = row.get_indicator(6) == soci::i_null ? "" : row.get<std::string>(6);
+            t.deadline        = row.get_indicator(7) == soci::i_null ? "" : row.get<std::string>(7);
+            t.completion_date = row.get_indicator(8) == soci::i_null ? "" : row.get<std::string>(8);
+            t.memo            = row.get_indicator(9) == soci::i_null ? "" : row.get<std::string>(9);
+            results.push_back(t);
+        }
+    } catch (const soci::soci_error& e) {
+        std::cerr << "GetTodoList Error: " << e.what() << std::endl;
+    }
+    return results;
+}
+
+Database::ToDo Database::GetTodoById(int todo_id) {
+    ToDo t{};
+    if (sql.get_backend() == nullptr) return t;
+
+    try {
+        soci::rowset<soci::row> rs = (sql.prepare <<
+            "SELECT id, category_id, status, priority, todo_name, start_time, target_end, deadline, completion_date, memo "
+            "FROM todo WHERE id = :id",
+            soci::use(todo_id, "id"));
+
+        auto it = rs.begin();
+        if (it == rs.end()) return t;
+
+        const soci::row& row = *it;
+        t.todo_id         = (int)row.get<long long>(0);
+        t.category_id     = (int)row.get<long long>(1);
+        t.status          = (int)row.get<long long>(2);
+        t.priority        = row.get_indicator(3) == soci::i_null ? 0  : (int)row.get<long long>(3);
+        t.todo_name       = row.get<std::string>(4);
+        t.time_begin      = row.get_indicator(5) == soci::i_null ? "" : row.get<std::string>(5);
+        t.target_end      = row.get_indicator(6) == soci::i_null ? "" : row.get<std::string>(6);
+        t.deadline        = row.get_indicator(7) == soci::i_null ? "" : row.get<std::string>(7);
+        t.completion_date = row.get_indicator(8) == soci::i_null ? "" : row.get<std::string>(8);
+        t.memo            = row.get_indicator(9) == soci::i_null ? "" : row.get<std::string>(9);
+    } catch (const soci::soci_error& e) {
+        std::cerr << "GetTodoById Error: " << e.what() << std::endl;
+    }
+    return t;
 }
 
 void Database::Close() { // 閉じる

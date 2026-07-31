@@ -209,7 +209,7 @@ void Mainwnd::OnTodo(wxCommandEvent& event) {
 		return;
 	}
 	wxLogDebug("DB check passed");
-	Todo* todo = new Todo(this, db);
+	ToDo* todo = new ToDo(this, db);
 	todo->Show(true);
 
 }

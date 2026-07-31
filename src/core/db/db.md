@@ -30,6 +30,7 @@ erDiagram
         integer priority
         text todo_name
         text start_time
+        text target_end
         text deadline
         text completion_date
         text memo

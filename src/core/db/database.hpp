@@ -17,6 +17,25 @@ public:
 	long long   total_seconds;
     };
 
+    enum class ToDoFilter : int {
+        All     = -1,
+        Pending = 0,
+        Done    = 1,
+    };
+
+    struct ToDo {
+        int todo_id;
+        int category_id;
+        int status;
+        int priority;
+        std::string todo_name;
+        std::string time_begin;
+        std::string target_end;
+        std::string deadline;
+        std::string completion_date;
+        std::string memo;
+    };
+
 	Database();
 	~Database(); // 安全のため，Close()を呼んでる．
 	bool Connect(const std::string& path); // 接続．
@@ -58,6 +77,12 @@ public:
 	std::string GetCategoryName(int category_id); // Category ID から、名前を取得
 	std::string GetMemoByRecordId(int record_id); // Record ID から、Memo を取得
 	Database::Record GetTimeByRecordId(int record_id); // Record ID から、開始時刻と終了時刻を取得
+    // --- ToDo ---
+    bool InsertToDo(const ToDo& todo);
+	bool UpdateToDo(const ToDo& todo);
+	std::vector<Database::ToDo> GetTodoList(ToDoFilter filter = ToDoFilter::All);
+	Database::ToDo GetTodoById(int todo_id);
+
 	void Close(); // DB クローズ処理
 	
     // --- db_report.cpp ---
