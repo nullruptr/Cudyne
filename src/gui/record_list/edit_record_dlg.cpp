@@ -228,7 +228,7 @@ void EditRecordDlg::OnSave(wxCommandEvent& event) {
 	}
 	break;
     case 1: // Update
-	if (!m_db.UpdateRecords(m_record_id, str_start, str_end, str_memo)) {
+	if (!m_db.UpdateRecords(m_record_id, m_category_id, str_start, str_end, str_memo)) {
 	    wxMessageBox(_("Failed to save"), "Error", wxOK | wxICON_ERROR);
 	    return;
 	}

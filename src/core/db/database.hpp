@@ -26,7 +26,7 @@ public:
 	// --- 書き込み ---
 	bool InsertCategories(int parent_id, const std::string &name, bool is_folder); // カテゴリ名，親ID，フォルダ
 	bool InsertRecords(int category_id, const std::string &time_begin, const std::string &time_end, const std::string &memo); // カテゴリテーブルでのID，開始時刻，終了時刻，メモ
-	bool UpdateRecords(int record_id, const std::string &time_begin, const std::string &time_end, const std::string &memo);
+	bool UpdateRecords(int record_id, int category_id, const std::string &time_begin, const std::string &time_end, const std::string &memo);
 	struct Category{
 		int id;
 		int parent_id;

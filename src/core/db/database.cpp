@@ -234,11 +234,12 @@ bool Database::InsertRecords(int category_id, const std::string &time_begin, con
 	return true;
 }
 
-bool Database::UpdateRecords(int record_id, const std::string& time_begin, const std::string& time_end, const std::string& memo) {
+bool Database::UpdateRecords(int record_id, int category_id, const std::string& time_begin, const std::string& time_end, const std::string& memo) {
     if (sql.get_backend() == nullptr) return false;
 
     try {
-        sql << "UPDATE records SET time_begin = :begin, time_end = :end, memo = :memo WHERE id = :id",
+        sql << "UPDATE records SET category_id = :category_id, time_begin = :begin, time_end = :end, memo = :memo WHERE id = :id",
+            soci::use(category_id, "category_id"),
             soci::use(time_begin, "begin"),
             soci::use(time_end,   "end"),
             soci::use(memo,   "memo"),
