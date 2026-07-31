@@ -7,7 +7,7 @@
 
 class EditTodoDlg : public wxDialog {
 public:
-    static EditTodoDlg* ForNew(wxWindow* parent, Database& db, int category_id);
+    static EditTodoDlg* ForNew(wxWindow* parent, Database& db);
     static EditTodoDlg* ForUpdate(wxWindow* parent, Database& db, int todo_id);
 
 private:
@@ -28,8 +28,16 @@ private:
     wxCheckBox* m_cb_done;
 
     wxDatePickerCtrl* m_dp_start;
+    wxTextCtrl* m_tc_start_hhmm;
+    wxTextCtrl* m_tc_start_ss;
+
     wxDatePickerCtrl* m_dp_target_end;
+    wxTextCtrl* m_tc_target_end_hhmm;
+    wxTextCtrl* m_tc_target_end_ss;
+
     wxDatePickerCtrl* m_dp_deadline;
+    wxTextCtrl* m_tc_deadline_hhmm;
+    wxTextCtrl* m_tc_deadline_ss;
 
     wxTextCtrl* m_tc_memo;
 
@@ -38,4 +46,8 @@ private:
     void OnSave(wxCommandEvent& WXUNUSED(event)); // 保存
     void OnCancel(wxCommandEvent& WXUNUSED(event)); // キャンセル
     void OnSelCategory(wxCommandEvent& WXUNUSED(event)); // カテゴリ選択
+    void OnClearCategory(wxCommandEvent& WXUNUSED(event)); // カテゴリ選択解除
+    void OnValidateHHMM(wxTextCtrl* tc);
+    void OnValidateSS(wxTextCtrl* tc);
+    void UpdateCategoryLabels(); // m_category_id を元に表示ラベルを更新
 };

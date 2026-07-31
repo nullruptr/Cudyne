@@ -653,9 +653,12 @@ bool Database::InsertToDo(const ToDo& todo) {
     if (sql.get_backend() == nullptr) return false;
 
     try {
+        // category_id == -1 は「未選択」を表すので、DB には NULL として保存する
+        soci::indicator category_ind = (todo.category_id == -1) ? soci::i_null : soci::i_ok;
+
         sql << "INSERT INTO todo (category_id, status, priority, todo_name, start_time, target_end, deadline, completion_date, memo) "
                "VALUES (:category_id, :status, :priority, :todo_name, :start_time, :target_end, :deadline, :completion_date, :memo)",
-            soci::use(todo.category_id, "category_id"),
+            soci::use(todo.category_id, category_ind, "category_id"),
             soci::use(todo.status, "status"),
             soci::use(todo.priority, "priority"),
             soci::use(todo.todo_name, "todo_name"),
@@ -675,11 +678,14 @@ bool Database::UpdateToDo(const ToDo& todo) {
     if (sql.get_backend() == nullptr) return false;
 
     try {
+        // category_id == -1 は「未選択」を表すので、DB には NULL として保存する
+        soci::indicator category_ind = (todo.category_id == -1) ? soci::i_null : soci::i_ok;
+
         sql << "UPDATE todo SET category_id = :category_id, status = :status, priority = :priority, "
                "todo_name = :todo_name, start_time = :start_time, target_end = :target_end, "
                "deadline = :deadline, completion_date = :completion_date, memo = :memo "
                "WHERE id = :todo_id",
-            soci::use(todo.category_id, "category_id"),
+            soci::use(todo.category_id, category_ind, "category_id"),
             soci::use(todo.status, "status"),
             soci::use(todo.priority, "priority"),
             soci::use(todo.todo_name, "todo_name"),
@@ -711,7 +717,7 @@ std::vector<Database::ToDo> Database::GetTodoList(ToDoFilter filter) {
         for (const auto& row : rs) {
             ToDo t;
             t.todo_id         = (int)row.get<long long>(0);
-            t.category_id     = (int)row.get<long long>(1);
+            t.category_id     = row.get_indicator(1) == soci::i_null ? -1 : (int)row.get<long long>(1);
             t.status          = (int)row.get<long long>(2);
             t.priority        = row.get_indicator(3) == soci::i_null ? 0  : (int)row.get<long long>(3);
             t.todo_name       = row.get<std::string>(4);
@@ -743,7 +749,7 @@ Database::ToDo Database::GetTodoById(int todo_id) {
 
         const soci::row& row = *it;
         t.todo_id         = (int)row.get<long long>(0);
-        t.category_id     = (int)row.get<long long>(1);
+        t.category_id     = row.get_indicator(1) == soci::i_null ? -1 : (int)row.get<long long>(1);
         t.status          = (int)row.get<long long>(2);
         t.priority        = row.get_indicator(3) == soci::i_null ? 0  : (int)row.get<long long>(3);
         t.todo_name       = row.get<std::string>(4);

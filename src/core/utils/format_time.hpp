@@ -23,4 +23,14 @@ namespace TimeUtils {
     wxString ParseSS(const wxString& input);
     // DatePicker の日付と hhmm, ss 文字列から UTC の std::string を作る
     std::string BuildUTCString(const wxDateTime& date, const wxString& hhmm, const wxString& ss);
+    // DB に保存された UTC 文字列("%Y-%m-%d %H:%M:%S")を、システム(ローカル)時間の date, hhmm, ss に分けて返す
+    // 空文字の場合は今日・00:00:00 を返す
+    ParsedTime ParseUTCString(const std::string& utc_str);
+    // DB に保存された UTC 文字列を、システム(ローカル)時間の "2026-06-01 20:39:12" 形式の文字列にする
+    // 空文字の場合は "-" を返す
+    wxString FormatUTCStringToLocal(const std::string& utc_str);
+    // DB に保存された UTC 文字列を epoch(Unix time, UTC) に変換する。空文字の場合は 0 を返す
+    long long ParseUTCStringToEpoch(const std::string& utc_str);
+    // 2つの epoch の差を "HH:MM:SS" 形式にする。target が過去なら "-" を付ける
+    wxString FormatCountdown(long long target_epoch, long long now_epoch);
 }

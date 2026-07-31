@@ -93,4 +93,55 @@ namespace TimeUtils {
 
     return dt.ToUTC().Format("%Y-%m-%d %H:%M:%S").ToStdString();
 }
+
+    ParsedTime ParseUTCString(const std::string& utc_str) {
+        ParsedTime pt;
+        if (utc_str.empty()) {
+            pt.date = wxDateTime::Today();
+            pt.hhmm = "00:00";
+            pt.ss   = "00";
+            return pt;
+        }
+
+        wxDateTime dt;
+        dt.ParseFormat(wxString::FromUTF8(utc_str), "%Y-%m-%d %H:%M:%S");
+        dt = dt.FromUTC(); // 保存時は ToUTC() しているので、ここで逆変換してシステム時間に戻す
+
+        pt.date = dt;
+        pt.hhmm = dt.Format("%H:%M");
+        pt.ss   = dt.Format("%S");
+        return pt;
+    }
+
+    wxString FormatUTCStringToLocal(const std::string& utc_str) {
+        if (utc_str.empty()) return wxString("-");
+
+        wxDateTime dt;
+        dt.ParseFormat(wxString::FromUTF8(utc_str), "%Y-%m-%d %H:%M:%S");
+        dt = dt.FromUTC();
+
+        return dt.Format("%Y-%m-%d %H:%M:%S");
+    }
+
+    long long ParseUTCStringToEpoch(const std::string& utc_str) {
+        if (utc_str.empty()) return 0;
+
+        wxDateTime dt;
+        dt.ParseFormat(wxString::FromUTF8(utc_str), "%Y-%m-%d %H:%M:%S");
+        dt = dt.FromUTC();
+
+        return (long long)dt.GetTicks();
+    }
+
+    wxString FormatCountdown(long long target_epoch, long long now_epoch) {
+        long long diff = target_epoch - now_epoch;
+        bool overdue = diff < 0;
+        long long abs_diff = overdue ? -diff : diff;
+
+        long long h = abs_diff / 3600;
+        long long m = (abs_diff % 3600) / 60;
+        long long s = abs_diff % 60;
+
+        return wxString::Format("%s%02lld:%02lld:%02lld", overdue ? "-" : "", h, m, s);
+    }
 }
