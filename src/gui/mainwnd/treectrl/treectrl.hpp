@@ -22,6 +22,7 @@ public:
 		      );
 	void OnCreateNewCategory(wxCommandEvent& event);
 	void OnCreateNewRecord(wxCommandEvent& event);
+	void OnCreateNewToDo(wxCommandEvent& event);
 	void OnEditParentId(wxCommandEvent& event); // parent id の編集
 	void OnEditItem(wxCommandEvent& event);
 	void OnDeleteItem(wxCommandEvent& event); // イベント削除
@@ -39,5 +40,6 @@ enum{
 	ID_TREE_EDIT,
 	ID_CREATE_NEW_CATEGORY,
 	ID_CREATE_NEW_RECORD,
+	ID_CREATE_NEW_TODO,
 	ID_MOVE
 };

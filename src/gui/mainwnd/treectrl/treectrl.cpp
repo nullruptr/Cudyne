@@ -6,6 +6,7 @@
 #include "treectrl.hpp"
 #include "gui/time_log/tree_item_data.hpp"
 #include "gui/record_list/edit_record_dlg.hpp"
+#include "gui/todo/edit_todo_dlg.hpp"
 
 CategoryTree::CategoryTree(wxWindow* parent, Database &dbRef) 
 	: wxTreeCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
@@ -32,7 +33,14 @@ CategoryTree::CategoryTree(wxWindow* parent, Database &dbRef)
 		wxEVT_MENU,
 		&CategoryTree::OnCreateNewRecord,
 		this,
-		ID_CREATE_NEW_RECORD	
+		ID_CREATE_NEW_RECORD
+	);
+
+	Bind(
+		wxEVT_MENU,
+		&CategoryTree::OnCreateNewToDo,
+		this,
+		ID_CREATE_NEW_TODO
 	);
 
 	Bind(
@@ -182,6 +190,26 @@ void CategoryTree::OnCreateNewRecord(wxCommandEvent& event) {
     dlg->Destroy();
 }
 
+void CategoryTree::OnCreateNewToDo(wxCommandEvent& event) {
+    // 現在選択されているアイテムを取得
+    wxTreeItemId item = GetSelection();
+
+    if (!item.IsOk()) return;
+    TreeItemData* data = (TreeItemData*)GetItemData(item);
+    if (!data) return;
+    int id = data->GetId();
+
+    // フォルダか否か判定
+    if (m_db.IsFolder(id) == 1) {
+	wxMessageBox(_("Cannot create a ToDo for a folder. Please select a task."), "Error", wxOK | wxICON_ERROR);
+	return;
+    }
+
+    EditTodoDlg* dlg = EditTodoDlg::ForNew(this, m_db, id);
+    dlg->ShowModal();
+    dlg->Destroy();
+}
+
 void CategoryTree::OnEditParentId(wxCommandEvent& event) {
 	wxTreeItemId item = GetSelection(); // 選択されたアイテム情報取得
 
@@ -297,6 +325,7 @@ void CategoryTree::OnContextMenu(wxContextMenuEvent& event) {
 	wxMenu menu;
 	menu.Append(ID_CREATE_NEW_CATEGORY, _("Create New Category"));
 	menu.Append(ID_CREATE_NEW_RECORD, _("Create New Record"));
+	menu.Append(ID_CREATE_NEW_TODO, _("Create New ToDo"));
 	menu.Append(wxID_EDIT, _("Edit"));
 	menu.Append(ID_MOVE, _("Move"));
 	menu.Append(wxID_DELETE, _("Delete"));

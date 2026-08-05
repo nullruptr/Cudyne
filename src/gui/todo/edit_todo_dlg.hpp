@@ -8,6 +8,7 @@
 class EditTodoDlg : public wxDialog {
 public:
     static EditTodoDlg* ForNew(wxWindow* parent, Database& db);
+    static EditTodoDlg* ForNew(wxWindow* parent, Database& db, int category_id);
     static EditTodoDlg* ForUpdate(wxWindow* parent, Database& db, int todo_id);
 
 private:

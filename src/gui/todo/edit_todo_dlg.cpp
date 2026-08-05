@@ -12,6 +12,10 @@ EditTodoDlg* EditTodoDlg::ForNew(wxWindow* parent, Database& db) {
     return new EditTodoDlg(parent, db, -1, -1); // カテゴリ未選択の状態で開く
 }
 
+EditTodoDlg* EditTodoDlg::ForNew(wxWindow* parent, Database& db, int category_id) {
+    return new EditTodoDlg(parent, db, category_id, -1); // カテゴリ指定済みの状態で開く
+}
+
 EditTodoDlg* EditTodoDlg::ForUpdate(wxWindow* parent, Database& db, int todo_id) {
     Database::ToDo todo = db.GetTodoById(todo_id);
     return new EditTodoDlg(parent, db, todo.category_id, todo_id);
