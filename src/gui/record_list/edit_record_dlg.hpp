@@ -17,11 +17,14 @@ private:
 
     int m_category_id;
     int m_record_id;
+    int m_todo_id; // 0 = 紐付く ToDo なし
 
     wxStaticText* m_st_category_name_ref;
     wxStaticText* m_st_category_id_ref;
     wxStaticText* m_st_category_path_ref;
     wxStaticText* m_st_record_id_ref;
+    wxStaticText* m_st_todo_id_ref;
+    wxStaticText* m_st_todo_name_ref;
     wxRadioBox* m_radio_box;
 
     wxDatePickerCtrl* m_dp_start;
@@ -36,6 +39,9 @@ private:
     void OnSave(wxCommandEvent& WXUNUSED(event)); // 保存
     void OnCancel(wxCommandEvent& WXUNUSED(event)); // キャンセル
     void OnSelCategory(wxCommandEvent& WXUNUSED(event)); // カテゴリ選択
+    void OnSelToDo(wxCommandEvent& WXUNUSED(event)); // ToDo 選択
+    void OnClearToDo(wxCommandEvent& WXUNUSED(event)); // ToDo 選択解除
+    void UpdateToDoLabels();
     void OnValidateHHMM(wxTextCtrl* tc);
     void OnValidateSS(wxTextCtrl* tc);
 };

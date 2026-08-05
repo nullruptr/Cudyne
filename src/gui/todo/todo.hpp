@@ -36,4 +36,10 @@ private:
 	void OnListDoubleClick(wxListEvent& WXUNUSED(event));
 	void OnColumnClick(wxListEvent& event);
 	void OnTimer(wxTimerEvent& WXUNUSED(event));
+	void OnContextMenu(wxContextMenuEvent& event);
+	void OnStartRecord(wxCommandEvent& WXUNUSED(event));
+};
+
+enum {
+	ID_TODO_START_RECORD = wxID_HIGHEST + 100
 };

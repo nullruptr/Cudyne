@@ -25,7 +25,9 @@ RecordListPanel::RecordListPanel(wxWindow* parent, Database& dbRef)
     m_list->InsertColumn(2, _("Begin"),    wxLIST_FORMAT_LEFT, FromDIP(130));
     m_list->InsertColumn(3, _("End"),      wxLIST_FORMAT_LEFT, FromDIP(130));
     m_list->InsertColumn(4, _("Total"),    wxLIST_FORMAT_LEFT, FromDIP(80));
-    m_list->InsertColumn(5, _("Memo"),     wxLIST_FORMAT_LEFT, FromDIP(200));
+    m_list->InsertColumn(5, _("Todo ID"),  wxLIST_FORMAT_LEFT, FromDIP(60));
+    m_list->InsertColumn(6, _("Todo Name"),wxLIST_FORMAT_LEFT, FromDIP(140));
+    m_list->InsertColumn(7, _("Memo"),     wxLIST_FORMAT_LEFT, FromDIP(200));
     sizer->Add(m_list, 1, wxEXPAND);
     SetSizer(sizer);
 
@@ -50,7 +52,9 @@ void RecordListPanel::LoadRecords(const wxDateTime& start, const wxDateTime& end
         m_list->SetItem(idx, 2, TimeUtils::FormatEpochToDate(r.time_begin));
         m_list->SetItem(idx, 3, TimeUtils::FormatEpochToDate(r.time_end));
         m_list->SetItem(idx, 4, TimeUtils::FormatSeconds(r.total_seconds));
-        m_list->SetItem(idx, 5, StripNewlines(r.memo));
+        m_list->SetItem(idx, 5, r.todo_id > 0 ? wxString::Format("%d", r.todo_id) : "");
+        m_list->SetItem(idx, 6, r.todo_id > 0 ? wxString::FromUTF8(r.todo_name) : "");
+        m_list->SetItem(idx, 7, StripNewlines(r.memo));
         m_list->SetItemData(idx, (long)r.id);
     }
 }

@@ -1,6 +1,7 @@
 #include "edit_record_dlg.hpp"
 #include "core/utils/format_time.hpp"
 #include "core/db/database.hpp"
+#include "gui/common/sel_todo_dlg/sel_todo_dlg.hpp"
 #include <wx/event.h>
 #include <wx/sizer.h>
 #include <wx/string.h>
@@ -20,9 +21,10 @@ EditRecordDlg* EditRecordDlg::ForUpdate(wxWindow* parent, Database& db, int reco
 
 EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id, int record_id) 
     : wxDialog(parent, wxID_ANY, _("Edit Record"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
-    , m_db(dbRef) 
+    , m_db(dbRef)
     , m_category_id(category_id)
-    , m_record_id(record_id) {
+    , m_record_id(record_id)
+    , m_todo_id(0) {
     
     // Category Name: Name
     // Category Path: 
@@ -49,9 +51,11 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
 
     // info
     wxBoxSizer* sel_category_sizer = new wxBoxSizer(wxHORIZONTAL);
-    wxFlexGridSizer* info_sizer = new wxFlexGridSizer(4, 2, FromDIP(5), FromDIP(5));
+    wxFlexGridSizer* info_sizer = new wxFlexGridSizer(6, 2, FromDIP(5), FromDIP(5));
 
     wxButton* btn_sel_category = new wxButton(this, wxID_ANY, _("Select Category"));
+    wxButton* btn_sel_todo = new wxButton(this, wxID_ANY, _("Select ToDo"));
+    wxButton* btn_clear_todo = new wxButton(this, wxID_ANY, _("Clear"));
     wxStaticText* st_category_name = new wxStaticText(this, wxID_ANY, _("Category Name: "));
     m_st_category_name_ref = new wxStaticText(this, wxID_ANY, wxString::FromUTF8(m_db.GetCategoryName(m_category_id)));
     wxStaticText* st_category_path = new wxStaticText(this, wxID_ANY, _("Category Path: "));
@@ -60,8 +64,14 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
     m_st_category_id_ref = new wxStaticText(this, wxID_ANY, wxString::Format("%d", m_category_id));
     wxStaticText* st_record_id = new wxStaticText(this, wxID_ANY, _("Record ID: "));
     m_st_record_id_ref = new wxStaticText(this, wxID_ANY, "-");
+    wxStaticText* st_todo_id = new wxStaticText(this, wxID_ANY, _("Todo ID: "));
+    m_st_todo_id_ref = new wxStaticText(this, wxID_ANY, "-");
+    wxStaticText* st_todo_name = new wxStaticText(this, wxID_ANY, _("Todo Name: "));
+    m_st_todo_name_ref = new wxStaticText(this, wxID_ANY, "-");
 
     sel_category_sizer->Add(btn_sel_category, 0, wxALIGN_CENTER_VERTICAL);
+    sel_category_sizer->Add(btn_sel_todo, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
+    sel_category_sizer->Add(btn_clear_todo, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
     info_sizer->Add(st_category_name, 0, wxALIGN_CENTER_VERTICAL);
     info_sizer->Add(m_st_category_name_ref, 0, wxALIGN_CENTER_VERTICAL);
     info_sizer->Add(st_category_path, 0, wxALIGN_CENTER_VERTICAL);
@@ -70,11 +80,17 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
     info_sizer->Add(m_st_category_id_ref, 0, wxALIGN_CENTER_VERTICAL);
     info_sizer->Add(st_record_id, 0, wxALIGN_CENTER_VERTICAL);
     info_sizer->Add(m_st_record_id_ref, 0, wxALIGN_CENTER_VERTICAL);
+    info_sizer->Add(st_todo_id, 0, wxALIGN_CENTER_VERTICAL);
+    info_sizer->Add(m_st_todo_id_ref, 0, wxALIGN_CENTER_VERTICAL);
+    info_sizer->Add(st_todo_name, 0, wxALIGN_CENTER_VERTICAL);
+    info_sizer->Add(m_st_todo_name_ref, 0, wxALIGN_CENTER_VERTICAL);
 
     sizer->Add(sel_category_sizer, 0, wxALL | wxEXPAND, FromDIP(5));
     sizer->Add(info_sizer, 0, wxALL | wxEXPAND, FromDIP(5));
 
     btn_sel_category->Bind(wxEVT_BUTTON, &EditRecordDlg::OnSelCategory, this);
+    btn_sel_todo->Bind(wxEVT_BUTTON, &EditRecordDlg::OnSelToDo, this);
+    btn_clear_todo->Bind(wxEVT_BUTTON, &EditRecordDlg::OnClearToDo, this);
 
     // 状態
     wxArrayString choices;
@@ -130,7 +146,10 @@ EditRecordDlg::EditRecordDlg(wxWindow* parent, Database &dbRef, int category_id,
 	m_dp_end->SetValue(end.date);
 	m_tc_end_hhmm->SetValue(end.hhmm);
 	m_tc_end_ss->SetValue(end.ss);
+
+	m_todo_id = m_db.GetTodoIdByRecordId(m_record_id);
     }
+    UpdateToDoLabels();
 
     // ForNew のとき Update, カテゴリ選択ボタンを無効化
     if (m_record_id == -1) {
@@ -222,13 +241,13 @@ void EditRecordDlg::OnSave(wxCommandEvent& event) {
 
     switch (m_radio_box->GetSelection()) {
     case 0: // New
-	if (!m_db.InsertRecords(m_category_id, str_start, str_end, str_memo)) {
+	if (!m_db.InsertRecords(m_category_id, str_start, str_end, str_memo, m_todo_id)) {
 	    wxMessageBox(_("Failed to save"), "Error", wxOK | wxICON_ERROR);
 	    return;
 	}
 	break;
     case 1: // Update
-	if (!m_db.UpdateRecords(m_record_id, m_category_id, str_start, str_end, str_memo)) {
+	if (!m_db.UpdateRecords(m_record_id, m_category_id, str_start, str_end, str_memo, m_todo_id)) {
 	    wxMessageBox(_("Failed to save"), "Error", wxOK | wxICON_ERROR);
 	    return;
 	}
@@ -251,6 +270,31 @@ void EditRecordDlg::OnSelCategory(wxCommandEvent& WXUNUSED(event)) {
         m_st_category_path_ref->SetLabel(wxString::FromUTF8(m_db.GetCategoriesPath(m_category_id)));
         m_st_category_id_ref->SetLabel(wxString::Format("%d", m_category_id));
     }
+}
+
+void EditRecordDlg::OnSelToDo(wxCommandEvent& WXUNUSED(event)) {
+    SelToDoDlg dlg(this, m_db);
+    if (dlg.ShowModal() == wxID_OK) {
+        m_todo_id = dlg.GetSelectedTodoId();
+        UpdateToDoLabels();
+    }
+}
+
+void EditRecordDlg::OnClearToDo(wxCommandEvent& WXUNUSED(event)) {
+    m_todo_id = 0;
+    UpdateToDoLabels();
+}
+
+void EditRecordDlg::UpdateToDoLabels() {
+    if (m_todo_id <= 0) {
+        m_st_todo_id_ref->SetLabel("-");
+        m_st_todo_name_ref->SetLabel("-");
+        return;
+    }
+
+    Database::ToDo todo = m_db.GetTodoById(m_todo_id);
+    m_st_todo_id_ref->SetLabel(wxString::Format("%d", m_todo_id));
+    m_st_todo_name_ref->SetLabel(wxString::FromUTF8(todo.todo_name));
 }
 
 void EditRecordDlg::OnValidateHHMM(wxTextCtrl* tc) {

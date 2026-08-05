@@ -62,4 +62,5 @@ private:
 	Inspector* m_inspector;
 	Statistic* m_statistic;
 	bool m_dpiChanging = false;
+	int m_selected_category_id = 0; // 直前にツリー等で選択されたカテゴリ ID（▶ボタン経由の Record 開始用）
 };

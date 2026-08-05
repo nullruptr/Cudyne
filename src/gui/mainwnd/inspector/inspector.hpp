@@ -17,7 +17,6 @@ public:
 	void ViewCtrl(Status);
 	void OnEnterPressed(wxCommandEvent& event);
 	void OnSave(wxCommandEvent& event);
-	void GetIdAndName(int& id, wxString& name); 
 private:
 	Database &m_db;
 	int m_selected_id;

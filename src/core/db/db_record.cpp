@@ -5,23 +5,28 @@
 #include <sqlite3.h>
 
 // レコード開始時刻を insert し、最後に追加したレコードをreturn
-long long Database::StartRecord(int category_id) {
-	if (db == nullptr){ 
+long long Database::StartRecord(int category_id, int todo_id) {
+	if (db == nullptr){
 		return -1;
 	}
 
-	const char* sql = "INSERT INTO records (category_id, time_begin, time_end) "
-		      "VALUES (?, datetime('now'), '') RETURNING id;";
+	const char* sql = "INSERT INTO records (category_id, todo_id, time_begin, time_end) "
+		      "VALUES (?, ?, datetime('now'), '') RETURNING id;";
 
 	sqlite3_stmt* stmt = nullptr;
 
 	if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK){
-		std::cerr << "Prepare Error: " << sqlite3_errmsg(db) << std::endl; 
+		std::cerr << "Prepare Error: " << sqlite3_errmsg(db) << std::endl;
 		return -1;
 	}
 
 
 	sqlite3_bind_int(stmt, 1, category_id);
+	if (todo_id > 0) {
+		sqlite3_bind_int(stmt, 2, todo_id);
+	} else {
+		sqlite3_bind_null(stmt, 2);
+	}
 
 	// 実行
 	int rc = sqlite3_step(stmt);

@@ -1,6 +1,7 @@
 #include "todo.hpp"
 #include "edit_todo_dlg.hpp"
 #include "core/utils/format_time.hpp"
+#include "gui/mainwnd/mainwnd.hpp"
 #include <wx/event.h>
 #include <wx/gdicmn.h>
 #include <wx/wx.h>
@@ -93,6 +94,8 @@ ToDo::ToDo(wxWindow* parent, Database &dbRef)
     m_btn_edit->Bind(wxEVT_BUTTON, &ToDo::OnEdit, this);
     m_list->Bind(wxEVT_LIST_ITEM_ACTIVATED, &ToDo::OnListDoubleClick, this);
     m_list->Bind(wxEVT_LIST_COL_CLICK, &ToDo::OnColumnClick, this);
+    m_list->Bind(wxEVT_CONTEXT_MENU, &ToDo::OnContextMenu, this);
+    m_list->Bind(wxEVT_MENU, &ToDo::OnStartRecord, this, ID_TODO_START_RECORD);
     Bind(wxEVT_TIMER, &ToDo::OnTimer, this);
 
     RefreshList();
@@ -137,6 +140,47 @@ void ToDo::OnListDoubleClick(wxListEvent& event) {
     dlg->ShowModal();
     dlg->Destroy();
     RefreshList();
+}
+
+void ToDo::OnContextMenu(wxContextMenuEvent& event) {
+    wxPoint point = event.GetPosition();
+
+    if (point != wxDefaultPosition) {
+        wxPoint clientPoint = m_list->ScreenToClient(point);
+
+        int flags;
+        long item = m_list->HitTest(clientPoint, flags);
+
+        if (item != wxNOT_FOUND) {
+            m_list->SetItemState(item, wxLIST_STATE_SELECTED | wxLIST_STATE_FOCUSED,
+                                  wxLIST_STATE_SELECTED | wxLIST_STATE_FOCUSED);
+        } else {
+            return;
+        }
+    }
+
+    wxMenu menu;
+    menu.Append(ID_TODO_START_RECORD, _("Start Recording"));
+    m_list->PopupMenu(&menu);
+}
+
+void ToDo::OnStartRecord(wxCommandEvent& WXUNUSED(event)) {
+    long idx = m_list->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+    if (idx == -1 || (size_t)idx >= m_todo_cache.size()) return;
+
+    const Database::ToDo& todo = m_todo_cache[(size_t)idx];
+
+    if (todo.category_id == -1) {
+        wxMessageBox(_("This ToDo has no category assigned. Please set a category first."),
+                     "Error", wxOK | wxICON_ERROR);
+        return;
+    }
+
+    // Mainwnd へ Record 開始イベントを送信（Recording::OnStartRecord が実処理。ToDo ID を紐付ける）
+    wxCommandEvent evt(wxEVT_MENU, ID_START_RECORDING);
+    evt.SetInt(todo.category_id);
+    evt.SetExtraLong(todo.todo_id);
+    wxPostEvent(GetParent(), evt);
 }
 
 void ToDo::OnColumnClick(wxListEvent& event) {

@@ -314,6 +314,9 @@ void Mainwnd::OnCategorySelected(wxCommandEvent& event) { // 表示内容更新�
 	int catId = event.GetInt();
 	wxString catName = event.GetString();
 
+	// ▶ボタン経由での Record 開始用に、直前に選択されたカテゴリを保持しておく
+	m_selected_category_id = catId;
+
 	// inspector と statistic の表示を更新
 	if (m_inspector) {
 		m_inspector->UpdateSelectedCategory(catId, catName);
@@ -328,15 +331,15 @@ void Mainwnd::OnCategorySelected(wxCommandEvent& event) { // 表示内容更新�
 
 void Mainwnd::OnStartRecordToRecWnd(wxCommandEvent& event) {
 	int catId = event.GetInt();
-	wxString catName = event.GetString();
+	int todoId = (int)event.GetExtraLong(); // ToDo 画面からの場合のみ ToDo ID が入る
 
-	// イベントに値がない場合（▶ボタン経由）は Inspector から取得
-	if (catId == 0 && catName.IsEmpty()) {
-		m_inspector->GetIdAndName(catId, catName);
+	// イベントに値がない場合（▶ボタン経由）は、直前に選択されたカテゴリを使用
+	if (catId == 0) {
+		catId = m_selected_category_id;
 	}
 
 	if (m_recording) {
-		m_recording->OnStartRecord(catId, catName);
+		m_recording->OnStartRecord(catId, todoId);
 	}
 }
 

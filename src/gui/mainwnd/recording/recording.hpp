@@ -4,13 +4,11 @@
 #include <wx/dataview.h>
 #include "core/db/database.hpp"
 
-class Inspector;
-
 class Recording : public wxPanel {
 public:
 	Recording(wxWindow* parent, Database& db);
 	void OnStartRecordFromBtn(wxCommandEvent& event);
-	void OnStartRecord(int id, const wxString& name);
+	void OnStartRecord(int category_id, int todo_id = 0); // todo_id が 0 以下の場合は ToDo と紐付けない
 	void OnStopRecord(wxCommandEvent& event);
 	void OnTimer(wxTimerEvent& event);
 	void OnSelectionChanged(wxDataViewEvent& event);

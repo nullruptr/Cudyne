@@ -127,8 +127,3 @@ void Inspector::OnSave(wxCommandEvent& event) { // 保存
 	evt.SetString(name);
 	wxPostEvent(GetParent(), evt);
 }
-
-void Inspector::GetIdAndName(int& id, wxString& name) { // 外部からidとname を取得する
-	id = m_selected_id;
-	name = m_selected_name;
-}

@@ -225,10 +225,9 @@ void CategoryTree::OnStartRecord(wxCommandEvent& event) {
     TreeItemData* data = (TreeItemData*)GetItemData(item);
     if (!data) return;
 
-    // Mainwnd へ Record 開始イベントを送信（Recording::OnStartRecord が実処理）
+    // Mainwnd へ Record 開始イベントを送信（Recording::OnStartRecord が実処理。名前は Database から取得される）
     wxCommandEvent evt(wxEVT_MENU, ID_START_RECORDING);
     evt.SetInt(data->GetId());
-    evt.SetString(GetItemText(item));
     wxPostEvent(GetParent(), evt);
 }
 

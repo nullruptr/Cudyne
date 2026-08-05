@@ -1,7 +1,6 @@
 #include "recording.hpp"
 #include "core/db/database.hpp"
 #include "gui/mainwnd/mainwnd.hpp"
-#include "gui/mainwnd/inspector/inspector.hpp"
 #include <wx/dataview.h>
 #include <wx/event.h>
 #include <wx/msgdlg.h>
@@ -21,6 +20,8 @@ Recording::Recording(wxWindow* parent, Database &dbRef) : wxPanel(parent) , m_db
 	m_dvlc->AppendTextColumn(_("Record ID"), wxDATAVIEW_CELL_INERT, FromDIP(75));
 	m_dvlc->AppendTextColumn(_("ID"), wxDATAVIEW_CELL_INERT, FromDIP(75));
 	m_dvlc->AppendTextColumn(_("Category Name"), wxDATAVIEW_CELL_INERT, FromDIP(150));
+	m_dvlc->AppendTextColumn(_("Todo ID"), wxDATAVIEW_CELL_INERT, FromDIP(75));
+	m_dvlc->AppendTextColumn(_("Todo Name"), wxDATAVIEW_CELL_INERT, FromDIP(150));
 	m_dvlc->AppendTextColumn(_("Start Time"), wxDATAVIEW_CELL_INERT, FromDIP(175));
 	m_dvlc->AppendTextColumn(_("Elapsed Time"), wxDATAVIEW_CELL_INERT, FromDIP(150));
 
@@ -49,16 +50,16 @@ Recording::Recording(wxWindow* parent, Database &dbRef) : wxPanel(parent) , m_db
 }
 
 // Recording 側の start ボタンから Record を開始する場合。
-// Inspector から、ID と名前を取得し、OnStartへ。->Record 開始
+// どのカテゴリを開始するかは Mainwnd が保持している「直前に選択されたカテゴリ」を使う
 void Recording::OnStartRecordFromBtn(wxCommandEvent& event){
 	wxCommandEvent evt(wxEVT_MENU, ID_START_RECORDING);
-	// id と name は Mainwnd が Inspector から取って Recording に渡す
 	wxPostEvent(GetParent(), evt);
 }
 
 // 外部から Record を開始する場合。
-void Recording::OnStartRecord(int id, const wxString& name) {
-	m_selected_id = id; // ほかに引き渡す用途
+// name は Inspector 等の UI 側からではなく、Database から直接取得する（依存しない設計）
+void Recording::OnStartRecord(int category_id, int todo_id) {
+	m_selected_id = category_id; // ほかに引き渡す用途
 	int is_folder = this->m_db.IsFolder(m_selected_id);
 
 	if (is_folder == 1) {
@@ -71,7 +72,7 @@ void Recording::OnStartRecord(int id, const wxString& name) {
 	    return;
 	}
 
-	long long recordId = this->m_db.StartRecord(m_selected_id);
+	long long recordId = this->m_db.StartRecord(m_selected_id, todo_id);
 
 	if (recordId == -1) {
 		wxMessageBox(
@@ -83,13 +84,24 @@ void Recording::OnStartRecord(int id, const wxString& name) {
 		return;
 	}
 
+	wxString name = wxString::FromUTF8(this->m_db.GetCategoryName(category_id));
+
+	// ToDo から開始されていないとき（todo_id <= 0）は空欄のままにする
+	wxString todoIdStr, todoName;
+	if (todo_id > 0) {
+		todoIdStr = wxString::Format("%d", todo_id);
+		todoName  = wxString::FromUTF8(this->m_db.GetTodoById(todo_id).todo_name);
+	}
+
 	wxDateTime now = wxDateTime::Now();
 	wxString startTimeStr = now.Format("%Y-%m-%d %H:%M:%S");
-	
+
 	wxVector<wxVariant> data;
 	data.push_back(wxString::Format("%lld", recordId));
-	data.push_back(wxString::Format("%d", id));        // ID (Category ID)
+	data.push_back(wxString::Format("%d", category_id)); // ID (Category ID)
 	data.push_back(name);                               // Category Name
+	data.push_back(todoIdStr);                          // Todo ID
+	data.push_back(todoName);                           // Todo Name
 	data.push_back(startTimeStr);                       // Start Time
 	data.push_back("00:00:00");                         // Elapsed Time (初期値)
 
@@ -158,13 +170,13 @@ void Recording::OnTimer(wxTimerEvent& event) {
 
 	for (int i = 0; i < rowCount; ++i) {
 		wxVariant startVar;
-		m_dvlc->GetValue(startVar, i, 3);
+		m_dvlc->GetValue(startVar, i, 5);
 
-        
+
 	wxDateTime startTime;
         if (startTime.ParseFormat(startVar.GetString(), "%Y-%m-%d %H:%M:%S")) {
 		wxTimeSpan diff = now.Subtract(startTime);
-		m_dvlc->SetValue(diff.Format("%H:%M:%S"), i, 4);
+		m_dvlc->SetValue(diff.Format("%H:%M:%S"), i, 6);
         }
     }
     m_dvlc->Refresh();

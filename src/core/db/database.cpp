@@ -203,17 +203,17 @@ bool Database::InsertCategories(int parent_id, const std::string &name, bool is_
 	return true;
 }
 
-bool Database::InsertRecords(int category_id, const std::string &time_begin, const std::string &time_end, const std::string &memo){
-	if (db == nullptr){ 
+bool Database::InsertRecords(int category_id, const std::string &time_begin, const std::string &time_end, const std::string &memo, int todo_id){
+	if (db == nullptr){
 		return false;
 	}
 
-	const char* sql = "INSERT INTO records (category_id, time_begin, time_end, memo) VALUES (?, ?, ?, ?);";
+	const char* sql = "INSERT INTO records (category_id, time_begin, time_end, memo, todo_id) VALUES (?, ?, ?, ?, ?);";
 
 	sqlite3_stmt* stmt = nullptr;
 
 	if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK){
-		std::cerr << "Prepare Error: " << sqlite3_errmsg(db) << std::endl; 
+		std::cerr << "Prepare Error: " << sqlite3_errmsg(db) << std::endl;
 		return false;
 	}
 
@@ -222,6 +222,11 @@ bool Database::InsertRecords(int category_id, const std::string &time_begin, con
 	sqlite3_bind_text(stmt, 2, time_begin.c_str(), -1, SQLITE_TRANSIENT);
 	sqlite3_bind_text(stmt, 3, time_end.c_str(), -1, SQLITE_TRANSIENT);
 	sqlite3_bind_text(stmt, 4, memo.c_str(), -1, SQLITE_TRANSIENT);
+	if (todo_id > 0) {
+		sqlite3_bind_int(stmt, 5, todo_id);
+	} else {
+		sqlite3_bind_null(stmt, 5);
+	}
 
 	// 実行
 	int rc = sqlite3_step(stmt);
@@ -235,15 +240,19 @@ bool Database::InsertRecords(int category_id, const std::string &time_begin, con
 	return true;
 }
 
-bool Database::UpdateRecords(int record_id, int category_id, const std::string& time_begin, const std::string& time_end, const std::string& memo) {
+bool Database::UpdateRecords(int record_id, int category_id, const std::string& time_begin, const std::string& time_end, const std::string& memo, int todo_id) {
     if (sql.get_backend() == nullptr) return false;
 
     try {
-        sql << "UPDATE records SET category_id = :category_id, time_begin = :begin, time_end = :end, memo = :memo WHERE id = :id",
+        // todo_id <= 0 は「紐付けなし」を表すので、DB には NULL として保存する
+        soci::indicator todo_ind = (todo_id <= 0) ? soci::i_null : soci::i_ok;
+
+        sql << "UPDATE records SET category_id = :category_id, time_begin = :begin, time_end = :end, memo = :memo, todo_id = :todo_id WHERE id = :id",
             soci::use(category_id, "category_id"),
             soci::use(time_begin, "begin"),
             soci::use(time_end,   "end"),
             soci::use(memo,   "memo"),
+            soci::use(todo_id, todo_ind, "todo_id"),
             soci::use(record_id,  "id");
     } catch (const soci::soci_error& e) {
         std::cerr << "UpdateRecord Error: " << e.what() << std::endl;
@@ -592,6 +601,24 @@ int Database::GetCategoryIdByRecordId(int record_id) {
     } catch (const soci::soci_error& e) {
 	std::cerr << "GetCategoryIdByRecordId Error: " << e.what() << std::endl;
         return -1;
+    }
+    return result;
+}
+
+int Database::GetTodoIdByRecordId(int record_id) {
+    if (sql.get_backend() == nullptr) return 0;
+
+    int result = 0;
+    soci::indicator ind;
+
+    try {
+	sql <<
+	"SELECT todo_id FROM records WHERE id = :id",
+	soci::use(record_id), soci::into(result, ind);
+	if (ind == soci::i_null) return 0;
+    } catch (const soci::soci_error& e) {
+	std::cerr << "GetTodoIdByRecordId Error: " << e.what() << std::endl;
+        return 0;
     }
     return result;
 }

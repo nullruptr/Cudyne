@@ -16,6 +16,8 @@ public:
 	long long   time_end;     // UTC epoch
 	long long   total_seconds;
 	std::string memo;
+	int         todo_id = 0;  // 0 = 紐付く ToDo なし
+	std::string todo_name;
     };
 
     enum class ToDoFilter : int {
@@ -45,8 +47,8 @@ public:
 	std::string GetDBPath() const;
 	// --- 書き込み ---
 	bool InsertCategories(int parent_id, const std::string &name, bool is_folder); // カテゴリ名，親ID，フォルダ
-	bool InsertRecords(int category_id, const std::string &time_begin, const std::string &time_end, const std::string &memo); // カテゴリテーブルでのID，開始時刻，終了時刻，メモ
-	bool UpdateRecords(int record_id, int category_id, const std::string &time_begin, const std::string &time_end, const std::string &memo);
+	bool InsertRecords(int category_id, const std::string &time_begin, const std::string &time_end, const std::string &memo, int todo_id = 0); // カテゴリテーブルでのID，開始時刻，終了時刻，メモ，ToDo ID(0=紐付けなし)
+	bool UpdateRecords(int record_id, int category_id, const std::string &time_begin, const std::string &time_end, const std::string &memo, int todo_id = 0);
 	struct Category{
 		int id;
 		int parent_id;
@@ -75,6 +77,7 @@ public:
 	std::string GetCategoriesPath(int id);
 	long long GetLastExecuted(int category_id);
 	int GetCategoryIdByRecordId(int record_id); // Record ID から、Category ID を取得
+	int GetTodoIdByRecordId(int record_id); // Record ID から、ToDo ID を取得(0 = 紐付けなし)
 	std::string GetCategoryName(int category_id); // Category ID から、名前を取得
 	std::string GetMemoByRecordId(int record_id); // Record ID から、Memo を取得
 	Database::Record GetTimeByRecordId(int record_id); // Record ID から、開始時刻と終了時刻を取得
@@ -91,7 +94,7 @@ public:
     std::vector<Database::Record> GetRecordList(const std::string& start_utc, const std::string& end_utc, int category_id = -1);
     
 	// --- db_record.cpp ---
-	long long StartRecord(int category_id);
+	long long StartRecord(int category_id, int todo_id = 0); // todo_id が 0 以下の場合は ToDo と紐付けない
 	bool EndRecord(int record_id);
 	// --- db_total.cpp ---
 	long long int GetTotalTime(int category_id, const std::string& start_utc, const std::string& end_utc);
