@@ -45,6 +45,13 @@ CategoryTree::CategoryTree(wxWindow* parent, Database &dbRef)
 
 	Bind(
 		wxEVT_MENU,
+		&CategoryTree::OnStartRecord,
+		this,
+		ID_START_RECORD_FROM_TREE
+	);
+
+	Bind(
+		wxEVT_MENU,
 		&CategoryTree::OnEditItem,
 		this,
 		wxID_EDIT
@@ -210,6 +217,21 @@ void CategoryTree::OnCreateNewToDo(wxCommandEvent& event) {
     dlg->Destroy();
 }
 
+void CategoryTree::OnStartRecord(wxCommandEvent& event) {
+    // 現在選択されているアイテムを取得
+    wxTreeItemId item = GetSelection();
+
+    if (!item.IsOk()) return;
+    TreeItemData* data = (TreeItemData*)GetItemData(item);
+    if (!data) return;
+
+    // Mainwnd へ Record 開始イベントを送信（Recording::OnStartRecord が実処理）
+    wxCommandEvent evt(wxEVT_MENU, ID_START_RECORDING);
+    evt.SetInt(data->GetId());
+    evt.SetString(GetItemText(item));
+    wxPostEvent(GetParent(), evt);
+}
+
 void CategoryTree::OnEditParentId(wxCommandEvent& event) {
 	wxTreeItemId item = GetSelection(); // 選択されたアイテム情報取得
 
@@ -326,6 +348,8 @@ void CategoryTree::OnContextMenu(wxContextMenuEvent& event) {
 	menu.Append(ID_CREATE_NEW_CATEGORY, _("Create New Category"));
 	menu.Append(ID_CREATE_NEW_RECORD, _("Create New Record"));
 	menu.Append(ID_CREATE_NEW_TODO, _("Create New ToDo"));
+	menu.AppendSeparator();
+	menu.Append(ID_START_RECORD_FROM_TREE, _("Start Recording"));
 	menu.Append(wxID_EDIT, _("Edit"));
 	menu.Append(ID_MOVE, _("Move"));
 	menu.Append(wxID_DELETE, _("Delete"));
