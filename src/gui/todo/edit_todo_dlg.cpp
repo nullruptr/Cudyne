@@ -106,11 +106,13 @@ EditTodoDlg::EditTodoDlg(wxWindow* parent, Database& dbRef, int category_id, int
     m_tc_deadline_hhmm  = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(50, -1)), wxTE_PROCESS_ENTER);
     m_tc_deadline_ss    = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, FromDIP(wxSize(35, -1)), wxTE_PROCESS_ENTER);
 
+    wxButton* btn_now_start = new wxButton(this, wxID_ANY, _("Now"));
+
     date_sizer->Add(new wxStaticText(this, wxID_ANY, _("Start Time: ")), 0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_dp_start,      0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_tc_start_hhmm, 0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_tc_start_ss,   0, wxALIGN_CENTER_VERTICAL);
-    date_sizer->AddSpacer(0);
+    date_sizer->Add(btn_now_start,   0, wxALIGN_CENTER_VERTICAL);
 
     wxButton* btn_copy_deadline_to_target_end = new wxButton(this, wxID_ANY, _("= Deadline"));
 
@@ -130,6 +132,13 @@ EditTodoDlg::EditTodoDlg(wxWindow* parent, Database& dbRef, int category_id, int
         m_dp_target_end->SetValue(m_dp_deadline->GetValue());
         m_tc_target_end_hhmm->SetValue(m_tc_deadline_hhmm->GetValue());
         m_tc_target_end_ss->SetValue(m_tc_deadline_ss->GetValue());
+    });
+
+    btn_now_start->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+        wxDateTime now = wxDateTime::Now();
+        m_dp_start->SetValue(now);
+        m_tc_start_hhmm->SetValue(now.Format("%H:%M"));
+        m_tc_start_ss->SetValue(now.Format("%S"));
     });
 
     sizer->Add(date_sizer, 0, wxALL | wxEXPAND, FromDIP(5));
@@ -174,6 +183,12 @@ EditTodoDlg::EditTodoDlg(wxWindow* parent, Database& dbRef, int category_id, int
     // (ToDo は Record と違い一覧側にカテゴリ文脈がないため、New でもカテゴリ選択は有効のまま)
     if (m_todo_id == -1) {
         m_radio_box->Enable(1, false); // index 1 = Update
+
+        // Start Time のデフォルトを現在時刻にする
+        wxDateTime now = wxDateTime::Now();
+        m_dp_start->SetValue(now);
+        m_tc_start_hhmm->SetValue(now.Format("%H:%M"));
+        m_tc_start_ss->SetValue(now.Format("%S"));
     }
 
     // ラジオボタンの状態によって、Todo ID の表示を変える
