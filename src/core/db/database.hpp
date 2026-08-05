@@ -15,6 +15,7 @@ public:
 	long long   time_begin;   // UTC epoch
 	long long   time_end;     // UTC epoch
 	long long   total_seconds;
+	std::string memo;
     };
 
     enum class ToDoFilter : int {

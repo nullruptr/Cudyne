@@ -2,6 +2,15 @@
 #include "core/utils/format_time.hpp"
 #include "edit_record_dlg.hpp"
 
+// Memo は改行が入ると行が潰れて見づらいため、一覧表示時のみ改行をスペースに置き換える
+static wxString StripNewlines(const std::string& s) {
+    wxString ws = wxString::FromUTF8(s);
+    ws.Replace("\r\n", " ");
+    ws.Replace("\n", " ");
+    ws.Replace("\r", " ");
+    return ws;
+}
+
 RecordListPanel::RecordListPanel(wxWindow* parent, Database& dbRef)
     : wxPanel(parent, wxID_ANY), m_db(dbRef)
 {
@@ -15,6 +24,7 @@ RecordListPanel::RecordListPanel(wxWindow* parent, Database& dbRef)
     m_list->InsertColumn(2, _("Begin"),    wxLIST_FORMAT_LEFT, FromDIP(130));
     m_list->InsertColumn(3, _("End"),      wxLIST_FORMAT_LEFT, FromDIP(130));
     m_list->InsertColumn(4, _("Total"),    wxLIST_FORMAT_LEFT, FromDIP(80));
+    m_list->InsertColumn(5, _("Memo"),     wxLIST_FORMAT_LEFT, FromDIP(200));
     sizer->Add(m_list, 1, wxEXPAND);
     SetSizer(sizer);
 
@@ -39,6 +49,7 @@ void RecordListPanel::LoadRecords(const wxDateTime& start, const wxDateTime& end
         m_list->SetItem(idx, 2, TimeUtils::FormatEpochToDate(r.time_begin));
         m_list->SetItem(idx, 3, TimeUtils::FormatEpochToDate(r.time_end));
         m_list->SetItem(idx, 4, TimeUtils::FormatSeconds(r.total_seconds));
+        m_list->SetItem(idx, 5, StripNewlines(r.memo));
         m_list->SetItemData(idx, (long)r.id);
     }
 }

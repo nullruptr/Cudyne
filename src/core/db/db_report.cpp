@@ -58,7 +58,8 @@ std::vector<Database::Record> Database::GetRecordList(
         std::string query =
             "SELECT r.id, r.category_id, c.name, "
             "  strftime('%s', r.time_begin), "
-            "  strftime('%s', r.time_end) "
+            "  strftime('%s', r.time_end), "
+            "  r.memo "
             "FROM records r "
             "JOIN categories c ON r.category_id = c.id "
             "WHERE r.time_end != '' AND r.time_end > :start AND r.time_begin < :end "
@@ -76,6 +77,7 @@ std::vector<Database::Record> Database::GetRecordList(
             r.time_begin    = std::stoll(row.get<std::string>(3));
             r.time_end      = std::stoll(row.get<std::string>(4));
             r.total_seconds = r.time_end - r.time_begin;
+            r.memo          = row.get_indicator(5) == soci::i_null ? "" : row.get<std::string>(5);
             results.push_back(r);
         }
     } catch (const soci::soci_error& e) {
