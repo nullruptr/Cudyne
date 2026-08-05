@@ -1,6 +1,7 @@
 #include "record_list_panel.hpp"
 #include "core/utils/format_time.hpp"
 #include "edit_record_dlg.hpp"
+#include "gui/mainwnd/mainwnd.hpp"
 
 // Memo は改行が入ると行が潰れて見づらいため、一覧表示時のみ改行をスペースに置き換える
 static wxString StripNewlines(const std::string& s) {
@@ -66,4 +67,9 @@ void RecordListPanel::OnListDoubleClick(wxListEvent& event) {
     EditRecordDlg* dlg = EditRecordDlg::ForUpdate(this, m_db, record_id);
     dlg->ShowModal();
     dlg->Destroy();
+
+    // 保存/未保存に関わらず、Controller の現在の期間で表示を更新させる
+    wxCommandEvent evt(wxEVT_MENU, ID_UPDATE_STATISTIC);
+    evt.SetEventObject(this);
+    wxPostEvent(GetParent(), evt);
 }
