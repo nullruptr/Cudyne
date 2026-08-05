@@ -89,7 +89,7 @@ EditTodoDlg::EditTodoDlg(wxWindow* parent, Database& dbRef, int category_id, int
     sizer->Add(status_sizer, 0, wxALL | wxEXPAND, FromDIP(5));
 
     // 日付・時刻選択 (Start Time, Target End, Deadline)
-    wxFlexGridSizer* date_sizer = new wxFlexGridSizer(3, 4, FromDIP(5), FromDIP(5));
+    wxFlexGridSizer* date_sizer = new wxFlexGridSizer(3, 5, FromDIP(5), FromDIP(5));
 
     // wxDP_DROPDOWN でカレンダーのドロップダウンから日付を選べるようにする
     const long date_picker_style = wxDP_DROPDOWN | wxDP_SHOWCENTURY;
@@ -110,16 +110,27 @@ EditTodoDlg::EditTodoDlg(wxWindow* parent, Database& dbRef, int category_id, int
     date_sizer->Add(m_dp_start,      0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_tc_start_hhmm, 0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_tc_start_ss,   0, wxALIGN_CENTER_VERTICAL);
+    date_sizer->AddSpacer(0);
+
+    wxButton* btn_copy_deadline_to_target_end = new wxButton(this, wxID_ANY, _("= Deadline"));
 
     date_sizer->Add(new wxStaticText(this, wxID_ANY, _("Target End: ")), 0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_dp_target_end,     0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_tc_target_end_hhmm, 0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_tc_target_end_ss,  0, wxALIGN_CENTER_VERTICAL);
+    date_sizer->Add(btn_copy_deadline_to_target_end, 0, wxALIGN_CENTER_VERTICAL);
 
     date_sizer->Add(new wxStaticText(this, wxID_ANY, _("Deadline: ")), 0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_dp_deadline,      0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_tc_deadline_hhmm, 0, wxALIGN_CENTER_VERTICAL);
     date_sizer->Add(m_tc_deadline_ss,   0, wxALIGN_CENTER_VERTICAL);
+    date_sizer->AddSpacer(0);
+
+    btn_copy_deadline_to_target_end->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+        m_dp_target_end->SetValue(m_dp_deadline->GetValue());
+        m_tc_target_end_hhmm->SetValue(m_tc_deadline_hhmm->GetValue());
+        m_tc_target_end_ss->SetValue(m_tc_deadline_ss->GetValue());
+    });
 
     sizer->Add(date_sizer, 0, wxALL | wxEXPAND, FromDIP(5));
 
