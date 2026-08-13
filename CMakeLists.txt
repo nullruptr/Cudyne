@@ -1,22 +1,21 @@
 cmake_minimum_required(VERSION 3.14)
 
-# --- 1. クロスコンパイル設定 ---
-# LINUX_BUILD=ON のときはネイティブLinuxビルド（clangd用）
-# MSVC_BUILD=ON のときは Conan + MSVC ビルド（Windows ネイティブ）
-# どちらも OFF のときは既定の MinGW クロスビルド
-option(LINUX_BUILD "Build for Linux (for clangd)" OFF)
+# --- 1. ビルド設定 ---
+# LINUX_BUILD=ON のときは Conan + GCC ビルド（Linux ネイティブ）
+# MSVC_BUILD=ON  のときは Conan + MSVC ビルド（Windows ネイティブ）
+# いずれの場合も、依存ライブラリ（wxWidgets / SQLite3 / SOCI）は
+# poetry 経由でインストールした Conan が CMakeDeps/CMakeToolchain で用意する。
+option(LINUX_BUILD "Build for Linux using GCC + Conan" OFF)
 option(MSVC_BUILD "Build for Windows using MSVC + Conan" OFF)
 
-if(LINUX_BUILD OR MSVC_BUILD)
-    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+if(NOT LINUX_BUILD AND NOT MSVC_BUILD)
+    message(FATAL_ERROR
+        "LINUX_BUILD か MSVC_BUILD のどちらかを ON にしてください。\n"
+        "Linux: make release / make debug / make compdb\n"
+        "Windows: make -f Makefile.msvc release / debug / compdb")
 endif()
 
-if(NOT LINUX_BUILD AND NOT MSVC_BUILD)
-    set(CMAKE_SYSTEM_NAME Windows)
-    set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
-    set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
-    set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
-endif()
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -28,52 +27,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-D_DEBUG)
 endif()
 
-# --- 2. 探索パスの設定 ---
-if(MSVC_BUILD)
-    # Conan の CMakeDeps/CMakeToolchain が生成した設定をそのまま利用する
-elseif(NOT LINUX_BUILD)
-    # MinGW向け
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(WX_ROOT_PATH "/usr/x86_64-w64-mingw32/debug")
-    else()
-        set(WX_ROOT_PATH "/usr/x86_64-w64-mingw32/release")
-    endif()
+# --- 2. wxWidgets / ライブラリ探索 ---
+# Conan の CMakeDeps/CMakeToolchain が生成した設定をそのまま利用する
+find_package(wxWidgets CONFIG REQUIRED)
+find_package(SQLite3 CONFIG REQUIRED)
+find_package(SOCI CONFIG REQUIRED)
 
-    set(CMAKE_FIND_ROOT_PATH ${WX_ROOT_PATH} /usr/x86_64-w64-mingw32)
-    set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-    set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
-    set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
-
-    set(wxWidgets_ROOT_DIR ${WX_ROOT_PATH})
-endif()
-
-# --- 3. wxWidgets ---
-if(MSVC_BUILD)
-    find_package(wxWidgets CONFIG REQUIRED)
-else()
-    find_package(wxWidgets COMPONENTS core base propgrid aui REQUIRED)
-    include(${wxWidgets_USE_FILE})
-endif()
-
-# --- 4. ライブラリ探索 ---
-if(MSVC_BUILD)
-    find_package(SQLite3 CONFIG REQUIRED)
-    find_package(SOCI CONFIG REQUIRED)
-elseif(NOT LINUX_BUILD)
-    find_library(SQLITE3_LIB sqlite3 REQUIRED)
-    find_library(SOCI_CORE_LIB   soci_core   REQUIRED)
-    find_library(SOCI_SQLITE3_LIB soci_sqlite3 REQUIRED)
-else()
-    # Linux向けはpkg-config or システムライブラリを使用
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SQLITE3 REQUIRED sqlite3)
-    find_library(SOCI_CORE_LIB   soci_core   REQUIRED)
-    find_library(SOCI_SQLITE3_LIB soci_sqlite3 REQUIRED)
-endif()
-
-# --- 5. ソース ---
+# --- 3. ソース ---
 set(SOURCES
     src/core/clock/now_wxstring.cpp
     src/core/db/database.cpp
@@ -104,24 +64,25 @@ set(SOURCES
     src/gui/todo/edit_todo_dlg.cpp
     src/gui/todo/todo.cpp
     src/main.cpp
-    # resource.rc はLinuxビルドでは除外
-    $<$<NOT:$<BOOL:${LINUX_BUILD}>>:resource.rc>
+    # resource.rc は Windows (MSVC) ビルドでのみ使用
+    $<$<BOOL:${MSVC_BUILD}>:resource.rc>
 )
 
-# --- 6. ターゲット ---
-if(LINUX_BUILD)
-    add_executable(Cudyne ${SOURCES})
-else()
+# --- 4. ターゲット ---
+if(MSVC_BUILD)
     add_executable(Cudyne WIN32 ${SOURCES})
+else()
+    add_executable(Cudyne ${SOURCES})
 endif()
 
 target_compile_features(Cudyne PUBLIC cxx_std_14)
 
-# --- 7. インクルード ---
+target_include_directories(Cudyne PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+# --- 5. コンパイルオプション ---
 if(MSVC_BUILD)
-    target_include_directories(Cudyne PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
-    )
     target_compile_options(Cudyne PRIVATE /utf-8)
     target_compile_definitions(Cudyne PRIVATE UNICODE _UNICODE)
     set_property(TARGET Cudyne PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -129,53 +90,23 @@ if(MSVC_BUILD)
     # MSVC リンカ既定のマニフェスト自動生成を無効化する（競合すると DPI 対応が無効になり、
     # 4K 環境でぼやける原因になる）。
     target_link_options(Cudyne PRIVATE "/MANIFEST:NO")
-elseif(NOT LINUX_BUILD)
+else()
     target_compile_options(Cudyne PRIVATE "-finput-charset=UTF-8" "-fexec-charset=UTF-8")
-    target_include_directories(Cudyne PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
-        /usr/x86_64-w64-mingw32/include
-    )
-else()
-    target_include_directories(Cudyne PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
-        ${SQLITE3_INCLUDE_DIRS}
-    )
 endif()
 
-# --- 8. リンク ---
-if(MSVC_BUILD)
-    target_link_libraries(Cudyne
-        wxWidgets::wxWidgets
-        SOCI::soci_sqlite3_static
-        SOCI::soci_core_static
-        SQLite::SQLite3
-    )
-elseif(NOT LINUX_BUILD)
-    target_link_libraries(Cudyne
-        ${wxWidgets_LIBRARIES}
-        ${SOCI_SQLITE3_LIB}
-        ${SOCI_CORE_LIB}
-        ${SQLITE3_LIB}
-    )
-    set_target_properties(Cudyne PROPERTIES
-        LINK_FLAGS "-static -static-libgcc -static-libstdc++"
-    )
-else()
-    target_link_libraries(Cudyne
-        ${wxWidgets_LIBRARIES}
-        ${SOCI_SQLITE3_LIB}
-        ${SOCI_CORE_LIB}
-        ${SQLITE3_LIBRARIES}
-    )
-endif()
+# --- 6. リンク ---
+target_link_libraries(Cudyne
+    wxWidgets::wxWidgets
+    SOCI::soci_sqlite3_static
+    SOCI::soci_core_static
+    SQLite::SQLite3
+)
 
-# --- 9. compile_commands.json（Linuxビルド時のみ自動でルートにコピー）---
-if(LINUX_BUILD)
-    add_custom_command(
-        TARGET Cudyne POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_BINARY_DIR}/compile_commands.json
-            ${CMAKE_SOURCE_DIR}/compile_commands.json
-        COMMENT "Copying compile_commands.json to project root"
-    )
-endif()
+# --- 7. compile_commands.json をルートにコピー ---
+add_custom_command(
+    TARGET Cudyne POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_BINARY_DIR}/compile_commands.json
+        ${CMAKE_SOURCE_DIR}/compile_commands.json
+    COMMENT "Copying compile_commands.json to project root"
+)
