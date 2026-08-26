@@ -103,10 +103,14 @@ target_link_libraries(Cudyne
 )
 
 # --- 7. compile_commands.json をルートにコピー ---
-add_custom_command(
-    TARGET Cudyne POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_BINARY_DIR}/compile_commands.json
-        ${CMAKE_SOURCE_DIR}/compile_commands.json
-    COMMENT "Copying compile_commands.json to project root"
-)
+# Visual Studio ジェネレータは CMAKE_EXPORT_COMPILE_COMMANDS 非対応のため
+# compile_commands.json が生成されない（Ninja 使用時のみ存在する）。
+if(EXISTS ${CMAKE_BINARY_DIR}/compile_commands.json)
+    add_custom_command(
+        TARGET Cudyne POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_BINARY_DIR}/compile_commands.json
+            ${CMAKE_SOURCE_DIR}/compile_commands.json
+        COMMENT "Copying compile_commands.json to project root"
+    )
+endif()
