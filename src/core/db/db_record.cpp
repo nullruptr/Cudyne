@@ -2,6 +2,7 @@
 
 #include "core/db/database.hpp"
 #include <iostream>
+#include <soci/into.h>
 #include <sqlite3.h>
 
 // レコード開始時刻を insert し、最後に追加したレコードをreturn
@@ -69,4 +70,41 @@ bool Database::EndRecord(int record_id) {
 
 	sqlite3_finalize(stmt); // stmt 解法
 	return (rc == SQLITE_DONE);
+}
+
+std::vector<Database::Record> Database::GetUnfinishedRecords() {
+    std::vector<Record> results;
+    if (sql.get_backend() == nullptr) return results;
+
+    try {
+        std::string query =
+            "SELECT r.id, r.category_id, c.name, "
+            "  strftime('%s', r.time_begin), "
+            "  r.memo, "
+            "  r.todo_id, t.todo_name "
+            "FROM records r "
+            "JOIN categories c ON r.category_id = c.id "
+            "LEFT JOIN todo t ON r.todo_id = t.id "
+            "WHERE r.time_end = '' "
+            "ORDER BY r.time_begin ASC";
+
+        soci::rowset<soci::row> rs = (sql.prepare << query);
+
+        for (const auto& row : rs) {
+            Record r;
+            r.id            = (int)row.get<long long>(0);
+            r.category_id   = (int)row.get<long long>(1);
+            r.category_name = row.get<std::string>(2);
+            r.time_begin    = std::stoll(row.get<std::string>(3));
+            r.time_end      = 0; // 未終了のため終了時刻なし
+            r.total_seconds = 0;
+            r.memo          = row.get_indicator(4) == soci::i_null ? "" : row.get<std::string>(4);
+            r.todo_id       = row.get_indicator(5) == soci::i_null ? 0  : (int)row.get<long long>(5);
+            r.todo_name     = row.get_indicator(6) == soci::i_null ? "" : row.get<std::string>(6);
+            results.push_back(r);
+        }
+    } catch (const soci::soci_error& e) {
+        std::cerr << "GetUnfinishedRecords Error: " << e.what() << std::endl;
+    }
+    return results;
 }

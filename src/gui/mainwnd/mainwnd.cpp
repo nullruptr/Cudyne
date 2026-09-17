@@ -1,3 +1,4 @@
+#include <vector>
 #include <wx/event.h>
 #include <wx/wx.h>
 #include <wx/aui/aui.h>
@@ -10,6 +11,7 @@
 #include "gui/time_log/time_log.hpp"
 #include "gui/connect_db/connect_db.hpp"
 #include "gui/mainwnd/treectrl/treectrl.hpp"
+#include "core/db/database.hpp"
 
 Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	wxDefaultPosition) {
@@ -184,15 +186,14 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
     }
 
 void Mainwnd::OnQuit(wxCommandEvent& WXUNUSED(event)){ // 終了確認
-	int btn_status = wxMessageBox(_("Are you sure you want to quit?"),
-			wxT("MB"),
-			wxOK| wxCANCEL | wxICON_INFORMATION,
-			this);
+        int btn_status = wxMessageBox(_("Are you sure you want to quit?"),
+                wxT("MB"),
+                wxOK| wxCANCEL | wxICON_INFORMATION,
+                this);
 
-	if (btn_status != wxOK){ // OK以外が押されたら何も処理しない
-		return;
-	}
-
+        if (btn_status != wxOK){ // OK以外が押されたら何も処理しない
+            return;
+        }
 	Close(true);
 }
 
@@ -243,6 +244,11 @@ void Mainwnd::OnConnectDB(wxCommandEvent& event){
 			m_categoryTree->UpdateTreeData();
 			wxCommandEvent dummy;
 			OnRecordUpdate(dummy);
+
+			// 前回終了し忘れた Record があれば、Recording パネルに自動で復元する
+			for (const auto& r : db.GetUnfinishedRecords()) {
+				m_recording->ResumeRecord(r);
+			}
 		} else {
 			wxMessageBox(_("Connection failed"));
 		}

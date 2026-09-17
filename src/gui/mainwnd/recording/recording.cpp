@@ -115,6 +115,40 @@ void Recording::OnStartRecord(int category_id, int todo_id) {
 	// this->Bind(wxEVT_TIMER, &Recording::OnTimer, this, m_timer.GetId());
 }
 
+// 起動時に見つかった、終了し忘れた Record をリストへ復元する。
+// StartRecord は呼ばない（すでに DB に記録が存在するため、新規 INSERT をしてはいけない）
+void Recording::ResumeRecord(const Database::Record& r) {
+	wxString name = wxString::FromUTF8(this->m_db.GetCategoryName(r.category_id));
+
+	wxString todoIdStr, todoName;
+	if (r.todo_id > 0) {
+		todoIdStr = wxString::Format("%d", r.todo_id);
+		todoName  = wxString::FromUTF8(this->m_db.GetTodoById(r.todo_id).todo_name);
+	}
+
+	// r.time_begin は epoch 秒。wxDateTime(time_t) はタイムゾーンに依存しない瞬間を表すので、
+	// Format() すれば OnStartRecord と同じ「ローカル時刻の文字列」になる
+	wxDateTime startTime((time_t)r.time_begin);
+	wxString startTimeStr = startTime.Format("%Y-%m-%d %H:%M:%S");
+
+	wxVector<wxVariant> data;
+	data.push_back(wxString::Format("%d", r.id));
+	data.push_back(wxString::Format("%d", r.category_id)); // ID (Category ID)
+	data.push_back(name);                                  // Category Name
+	data.push_back(todoIdStr);                             // Todo ID
+	data.push_back(todoName);                              // Todo Name
+	data.push_back(startTimeStr);                          // Start Time
+	data.push_back("00:00:00");                            // Elapsed Time (次の OnTimer で即座に再計算される)
+
+	m_dvlc->AppendItem(data);
+
+	// 画面下部の現在の Record ID 表示も更新
+	m_st_rid->SetLabel(wxString::Format("%d", r.id));
+
+	// 1s 周期でタイマ（すでに動いていれば Start() は無害）
+	m_timer.Start(1000);
+}
+
 void Recording::OnSelectionChanged(wxDataViewEvent& event) {
 	int row = m_dvlc->GetSelectedRow();
 

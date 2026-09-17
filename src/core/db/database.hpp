@@ -96,6 +96,7 @@ public:
 	// --- db_record.cpp ---
 	long long StartRecord(int category_id, int todo_id = 0); // todo_id が 0 以下の場合は ToDo と紐付けない
 	bool EndRecord(int record_id);
+    std::vector<Database::Record> GetUnfinishedRecords(); // 終了していない(time_end未設定の) record を列挙
 	// --- db_total.cpp ---
 	long long int GetTotalTime(int category_id, const std::string& start_utc, const std::string& end_utc);
 

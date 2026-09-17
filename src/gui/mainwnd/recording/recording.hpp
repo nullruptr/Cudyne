@@ -9,6 +9,7 @@ public:
 	Recording(wxWindow* parent, Database& db);
 	void OnStartRecordFromBtn(wxCommandEvent& event);
 	void OnStartRecord(int category_id, int todo_id = 0); // todo_id が 0 以下の場合は ToDo と紐付けない
+	void ResumeRecord(const Database::Record& r); // 起動時、終了し忘れた Record をリストに復元しタイマーを再開する
 	void OnStopRecord(wxCommandEvent& event);
 	void OnTimer(wxTimerEvent& event);
 	void OnSelectionChanged(wxDataViewEvent& event);
