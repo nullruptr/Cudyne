@@ -32,8 +32,8 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	menuFile->AppendSeparator();
 	menuFile->Append(wxID_EXIT, _("Quit\t F12"));
 
-	wxMenu* menuEdit = new wxMenu;
-	menuEdit->Append(ID_MENU_TODO, _("ToDo"));
+	wxMenu* menuTools = new wxMenu;
+	menuTools->Append(ID_MENU_TODO, _("ToDo"));
 
 	wxMenu *menuLegacy = new wxMenu;
 	menuLegacy->Append(ID_TIME_LOG, _("Time Log"));
@@ -41,7 +41,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	// メニューバーの設定
 	wxMenuBar *menuBar = new wxMenuBar;
 	menuBar->Append(menuFile, _("File"));
-	menuBar->Append(menuEdit, _("Edit"));
+	menuBar->Append(menuTools, _("Tools"));
 	menuBar->Append(menuLegacy, _("Legacy"));
 	SetMenuBar(menuBar);
 

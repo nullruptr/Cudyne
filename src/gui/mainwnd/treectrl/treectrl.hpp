@@ -24,10 +24,12 @@ public:
 	void OnCreateNewRecord(wxCommandEvent& event);
 	void OnCreateNewToDo(wxCommandEvent& event);
 	void OnStartRecord(wxCommandEvent& event);
+	void OnOpenDetail(wxCommandEvent& event);
 	void OnEditParentId(wxCommandEvent& event); // parent id の編集
 	void OnEditItem(wxCommandEvent& event);
 	void OnDeleteItem(wxCommandEvent& event); // イベント削除
 	void OnContextMenu(wxContextMenuEvent& event);
+	bool GetSelectedItemInfo(int& id, wxString& name); // 選択中アイテムの ID/名前を取得。未選択なら false
 private:
 	Database& m_db;
 	wxTreeItemId m_context_item;
@@ -43,5 +45,6 @@ enum{
 	ID_CREATE_NEW_RECORD,
 	ID_CREATE_NEW_TODO,
 	ID_START_RECORD_FROM_TREE,
+	ID_DETAIL,
 	ID_MOVE
 };

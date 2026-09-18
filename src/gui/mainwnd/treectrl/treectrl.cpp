@@ -2,6 +2,7 @@
 #include <wx/event.h>
 #include <wx/treebase.h>
 #include <wx/wx.h>
+#include "detail.hpp"
 #include "gui/mainwnd/mainwnd.hpp"
 #include "treectrl.hpp"
 #include "gui/time_log/tree_item_data.hpp"
@@ -48,6 +49,13 @@ CategoryTree::CategoryTree(wxWindow* parent, Database &dbRef)
 		&CategoryTree::OnStartRecord,
 		this,
 		ID_START_RECORD_FROM_TREE
+	);
+
+	Bind(
+		wxEVT_MENU,
+		&CategoryTree::OnOpenDetail,
+		this,
+		ID_DETAIL
 	);
 
 	Bind(
@@ -177,14 +185,24 @@ void CategoryTree::OnCreateNewCategory(wxCommandEvent &event){
 	
 }
 
-void CategoryTree::OnCreateNewRecord(wxCommandEvent& event) {
-    // 現在選択されているアイテムを取得
-    wxTreeItemId item = GetSelection();
+// 選択中アイテムの ID/名前をまとめて取得する。未選択、または ID を持たないノード(ルート等)なら false
+bool CategoryTree::GetSelectedItemInfo(int& id, wxString& name) {
+	wxTreeItemId item = GetSelection();
+	if (!item.IsOk()) return false;
 
-    if (!item.IsOk()) return; 
-    TreeItemData* data = (TreeItemData*)GetItemData(item); 
-    if (!data) return;
-    int id = data->GetId();
+	TreeItemData* data = static_cast<TreeItemData*>(GetItemData(item));
+	if (!data) return false;
+
+	id = data->GetId();
+	name = GetItemText(item);
+	return true;
+}
+
+void CategoryTree::OnCreateNewRecord(wxCommandEvent& event) {
+    int id;
+    wxString name;
+    if (!GetSelectedItemInfo(id, name)) return;
+    wxUnusedVar(name);
 
     // フォルダか否か判定
     if (m_db.IsFolder(id) == 1) {
@@ -198,13 +216,10 @@ void CategoryTree::OnCreateNewRecord(wxCommandEvent& event) {
 }
 
 void CategoryTree::OnCreateNewToDo(wxCommandEvent& event) {
-    // 現在選択されているアイテムを取得
-    wxTreeItemId item = GetSelection();
-
-    if (!item.IsOk()) return;
-    TreeItemData* data = (TreeItemData*)GetItemData(item);
-    if (!data) return;
-    int id = data->GetId();
+    int id;
+    wxString name;
+    if (!GetSelectedItemInfo(id, name)) return;
+    wxUnusedVar(name);
 
     // フォルダか否か判定
     if (m_db.IsFolder(id) == 1) {
@@ -218,30 +233,22 @@ void CategoryTree::OnCreateNewToDo(wxCommandEvent& event) {
 }
 
 void CategoryTree::OnStartRecord(wxCommandEvent& event) {
-    // 現在選択されているアイテムを取得
-    wxTreeItemId item = GetSelection();
-
-    if (!item.IsOk()) return;
-    TreeItemData* data = (TreeItemData*)GetItemData(item);
-    if (!data) return;
+    int id;
+    wxString name;
+    if (!GetSelectedItemInfo(id, name)) return;
+    wxUnusedVar(name);
 
     // Mainwnd へ Record 開始イベントを送信（Recording::OnStartRecord が実処理。名前は Database から取得される）
     wxCommandEvent evt(wxEVT_MENU, ID_START_RECORDING);
-    evt.SetInt(data->GetId());
+    evt.SetInt(id);
     wxPostEvent(GetParent(), evt);
 }
 
 void CategoryTree::OnEditParentId(wxCommandEvent& event) {
-	wxTreeItemId item = GetSelection(); // 選択されたアイテム情報取得
-
-	if (!item.IsOk()) return; 
-	
-	TreeItemData* data = (TreeItemData*)GetItemData(item); 
-	if (!data) return;
-
-	int id = data->GetId();
-	wxString name = GetItemText(item);
-
+	int id;
+	wxString name;
+	if (!GetSelectedItemInfo(id, name)) return;
+	wxUnusedVar(name);
 
 	EditParentId dlg(this,
 			id,
@@ -253,22 +260,20 @@ void CategoryTree::OnEditParentId(wxCommandEvent& event) {
 	}
 }
 
+void CategoryTree::OnOpenDetail(wxCommandEvent& event) {
+	int id;
+	wxString name;
+	if (!GetSelectedItemInfo(id, name)) return;
+	wxUnusedVar(name);
+
+    Detail* dtl = new Detail(this, m_db, id);
+    dtl->Show(true);
+}
+
 void CategoryTree::OnEditItem(wxCommandEvent& event){
-	// ツリーでクリックされた内容を取得
-	wxTreeItemId item = GetSelection();
-
-	if (!item.IsOk()){
-		return;
-	}
-
-	TreeItemData* data = (TreeItemData*)GetItemData(item);
-
-	if(!data){
-		return;
-	}
-
-	int id = data->GetId();
-	wxString currentName = GetItemText(item);
+	int id;
+	wxString currentName;
+	if (!GetSelectedItemInfo(id, currentName)) return;
 
 	EditCategory dlg(this,
 			currentName,
@@ -283,15 +288,9 @@ void CategoryTree::OnEditItem(wxCommandEvent& event){
 }
 
 void CategoryTree::OnDeleteItem(wxCommandEvent& event){ // 削除および非表示処理
-	wxTreeItemId item = GetSelection(); // 選択されたアイテム情報取得
-
-	if (!item.IsOk()) return; 
-	
-	TreeItemData* data = (TreeItemData*)GetItemData(item); 
-	if (!data) return;
-
-	int id = data->GetId();
-	wxString name = GetItemText(item);
+	int id;
+	wxString name;
+	if (!GetSelectedItemInfo(id, name)) return;
 
 	if (m_db.HasRecords(id)) {
 		int ans = wxMessageBox(
@@ -349,6 +348,8 @@ void CategoryTree::OnContextMenu(wxContextMenuEvent& event) {
 	menu.Append(ID_CREATE_NEW_TODO, _("Create New ToDo"));
 	menu.AppendSeparator();
 	menu.Append(ID_START_RECORD_FROM_TREE, _("Start Recording"));
+	menu.AppendSeparator();
+	menu.Append(ID_DETAIL, _("Open Detail"));
 	menu.Append(wxID_EDIT, _("Edit"));
 	menu.Append(ID_MOVE, _("Move"));
 	menu.Append(wxID_DELETE, _("Delete"));

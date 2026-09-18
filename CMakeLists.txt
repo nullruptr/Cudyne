@@ -52,6 +52,7 @@ set(SOURCES
     src/gui/mainwnd/record_viewer/record_viewer.cpp
     src/gui/mainwnd/recording/recording.cpp
     src/gui/mainwnd/statistic/statistic.cpp
+    src/gui/mainwnd/treectrl/detail.cpp
     src/gui/mainwnd/treectrl/treectrl.cpp
     src/gui/mainwnd/mainwnd.cpp
     src/gui/record/record_window.cpp

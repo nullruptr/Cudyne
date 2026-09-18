@@ -9,7 +9,8 @@ erDiagram
     todo ||--o{ goal : "(category_id と排他)"
     goal ||--o{ plan : "goalから生成された予定(任意)"
     categories ||--o{ plan : ""
-    categories ||--o{ constraints : "NULLなら全カテゴリに適用"
+    categories ||--o{ constraints : "target_category_id: 制約の監視対象"
+    categories ||--o{ constraints : "event_category_id: 休憩イベントの記録先"
     constraints ||--o{ constraint_tiers : "段階的な休憩ルール"
     plan ||--o{ records : "予定と実績の関連付け(あれば)"
 
@@ -46,12 +47,12 @@ erDiagram
 
     goal {
         integer id PK
-        integer category_id FK "category_id / todo_id はどちらか一方のみ設定"
+        integer category_id FK "category_id / todo_id はどちらか一方のみ設定。フォルダを選択したらそれ以下のcategoryの実績も合算して進捗計算(子に個別goalがあっても二重カウントでよい)"
         integer todo_id FK
         text goal_name
         integer period_type "0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS"
         integer period_n "period_type=3のとき、3日に1回など"
-        integer target_minutes "期間ごとの目標(単位:min)"
+        integer target_time "期間ごとの目標(単位:sec)"
         text start_date "日付集計基準日"
         integer is_active "有効1/無効0"
         text memo "メモ"
@@ -69,17 +70,18 @@ erDiagram
 
     constraints {
         integer id PK
-        integer category_id FK "NULL可=全カテゴリに適用。goalの有無に依存しない。フォルダを選択したらそれ以下のcategoryに適用"
+        integer target_category_id FK "制約(閾値判定)の対象カテゴリ。NULL可=全カテゴリ。フォルダを選択したらそれ以下のcategoryに適用"
+        integer event_category_id FK "閾値超過時に発生させるイベント(強制休憩など)を記録するカテゴリ"
         integer constraint_type "0:連続稼働→段階的休憩ルール, 1:期間累計上限"
         integer period_type "type=1用。0:DAILY,1:WEEKLY,2:MONTHLY"
-        integer period_cap_minutes "type=1用。期間内合計の上限(例:月60h→3600)"
+        integer period_cap_time "type=1用。期間内合計の上限(例:月60h→3600)"
         text memo
     }
 
     constraint_tiers {
         integer id PK
         integer constraint_id FK
-        integer threshold_minutes "累積稼働がこの値以上になったら適用(降順で最初に一致した行を採用)"
-        integer required_break_minutes "挿入すべき休憩時間"
+        integer threshold_time "累積稼働がこの値以上になったら適用(降順で最初に一致した行を採用)"
+        integer required_time "挿入すべき休憩時間"
     }
 ```
