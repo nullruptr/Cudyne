@@ -10,4 +10,14 @@ private:
     Database &m_db;
     int m_id;
 	CategoryTree* m_categoryTree;
+	wxStaticText* m_result_total_time_all;
+	wxStaticText* m_result_total_time_range;
+	wxStaticText* m_last_executed;
+	wxStaticText* m_period_type;
+	wxStaticText* m_goal;
+	wxStaticText* m_remaining;
+	wxStaticText* m_deadline;
+	wxStaticText* m_time_to_deadline;
+
+	void OnSetTextOfDetail(wxCommandEvent& event);
 };
