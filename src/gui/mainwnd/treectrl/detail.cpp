@@ -31,7 +31,7 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
     wxBoxSizer* rightBoxSizer = new wxBoxSizer(wxVERTICAL);
     wxStaticText* detail_st = new wxStaticText(pnlDetail, wxID_ANY, _("Detail"));
     rightBoxSizer->Add(detail_st, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, 10);
-	wxFlexGridSizer* flex = new wxFlexGridSizer(4, 2, 8, 20);
+	wxFlexGridSizer* flex = new wxFlexGridSizer(4, 2, FromDIP(8), FromDIP(20));
 
 	// --- about splitter Settigs ---
 	splittermain->SplitVertically(pnlTreectrl, pnlDetail); // パネルを左右分割スピリッタに登録
