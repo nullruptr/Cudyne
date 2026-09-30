@@ -2,8 +2,10 @@
 #include <wx/sizer.h>
 #include <wx/versioninfo.h>
 #include <wx/wx.h>
-#include <wx/splitter.h>
+#include <wx/notebook.h>
 #include "detail.hpp"
+#include "core/utils/format_time.hpp"
+#include "core/utils/utils.hpp"
 
 Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	: wxFrame(parent, wxID_ANY, wxT("Detail"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT)
@@ -11,24 +13,12 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
       , m_id(id) {
     
     // ウィンドウが初期化された後に FromDIP しないとクラッシュする
-    SetSize(FromDIP(wxSize(1550, 600)));
+    SetSize(FromDIP(wxSize(600, 600)));
 
 	wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL); // メインサイザー
-	wxSplitterWindow* splittermain = new wxSplitterWindow(this, wxID_ANY); // 分割作成
-	mainSizer->Add(splittermain, 1, wxEXPAND, 0); // 分割をメインサイザーへ追加
+	wxPanel* pnlDetail = new wxPanel(this, wxID_ANY);
+	mainSizer->Add(pnlDetail, 1, wxEXPAND, 0);
 
-	// パネル設定
-	wxPanel* pnlTreectrl = new wxPanel(splittermain, wxID_ANY);
-	wxPanel* pnlDetail = new wxPanel(splittermain, wxID_ANY);
-
-	m_categoryTree = new CategoryTree(pnlTreectrl, m_db);
-
-    // left
-	wxBoxSizer* treeSizer = new wxBoxSizer(wxVERTICAL);
-	treeSizer->Add(m_categoryTree, 1, wxEXPAND);
-	pnlTreectrl->SetSizer(treeSizer);
-
-    //right
     wxBoxSizer* rightBoxSizer = new wxBoxSizer(wxVERTICAL);
     wxStaticText* detail_st = new wxStaticText(pnlDetail, wxID_ANY, _("Detail"));
     rightBoxSizer->Add(detail_st, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, 10);
@@ -36,8 +26,10 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	wxFlexGridSizer* flex = new wxFlexGridSizer(0, 2, FromDIP(8), FromDIP(20));
 	flex->AddGrowableCol(1, 1); // 値の列を伸縮させる
 
-	wxStaticText* stat_total_time_all = new wxStaticText(pnlDetail, wxID_ANY, _("Total Time (All-time):"));
-	m_result_total_time_all = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
+	wxStaticText* stat_total_time_incl_subitems = new wxStaticText(pnlDetail, wxID_ANY, _("Total Time (Including Subitems):"));
+	m_result_total_time_incl_subitems = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
+	wxStaticText* stat_total_time_selected = new wxStaticText(pnlDetail, wxID_ANY, _("Total Time (Selected Category):"));
+	m_result_total_time_selected = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
 	wxStaticText* stat_last_executed = new wxStaticText(pnlDetail, wxID_ANY, _("Last Executed:"));
 	m_last_executed = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
 	wxStaticText* stat_period_time = new wxStaticText(pnlDetail, wxID_ANY, _("Period Type"));
@@ -54,8 +46,10 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	// ラベルと値をペアで登録
 	const wxSizerFlags labelFlags = wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL);
 	const wxSizerFlags valueFlags = wxSizerFlags(1).Expand().Align(wxALIGN_CENTER_VERTICAL);
-	flex->Add(stat_total_time_all, labelFlags);
-	flex->Add(m_result_total_time_all, valueFlags);
+	flex->Add(stat_total_time_incl_subitems, labelFlags);
+	flex->Add(m_result_total_time_incl_subitems, valueFlags);
+	flex->Add(stat_total_time_selected, labelFlags);
+	flex->Add(m_result_total_time_selected, valueFlags);
 	flex->Add(stat_last_executed, labelFlags);
 	flex->Add(m_last_executed, valueFlags);
 	flex->Add(stat_period_time, labelFlags);
@@ -79,17 +73,34 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	btnSizer->Add(btn_setup_plan, 0);
 	rightBoxSizer->Add(btnSizer, 0, wxALL, FromDIP(10));
 
-	// --- about splitter Settigs ---
-	splittermain->SplitVertically(pnlTreectrl, pnlDetail); // パネルを左右分割スピリッタに登録
-	// ペイン設定 
-	splittermain->SetSashPosition(250); // 起動時にpx固定
-	splittermain->SetSashGravity(0.0);// Sash を左に固定
-	splittermain->SetMinimumPaneSize(250); // 最小サイズ指定
+	wxNotebook* notebook = new wxNotebook(pnlDetail, wxID_ANY);
+	notebook->AddPage(new wxPanel(notebook, wxID_ANY), _("Activity Report"));
+	notebook->AddPage(new wxPanel(notebook, wxID_ANY), _("Record"));
+	notebook->AddPage(new wxPanel(notebook, wxID_ANY), _("ToDo"));
+	notebook->AddPage(new wxPanel(notebook, wxID_ANY), _("Plan"));
+	rightBoxSizer->Add(notebook, 1, wxEXPAND | wxALL, FromDIP(10));
+
 
     pnlDetail->SetSizer(rightBoxSizer);
     this->SetSizer(mainSizer);
+	CenterOnParent(); // 親ウィンドウの真ん中に表示する
+    
+    wxCommandEvent evt;
+    OnSetTextOfDetail(evt);
 }
 
 void Detail::OnSetTextOfDetail(wxCommandEvent &event) {
-    
+	// 全期間の合計時間取得用（1970〜現在で固定）
+	std::string start_utc_all = "1970-01-01 00:00:00";
+	std::string end_utc_all = wxDateTime::Now().ToUTC().Format("%Y-%m-%d %H:%M:%S").ToStdString();
+
+	// DBへ
+	long long total_sec_all = m_db.GetTotalTime(m_id, start_utc_all, end_utc_all);
+	long long total_sec_incl_subitems = Utils::GetTimeOfChildCategories(m_db, m_id, start_utc_all, end_utc_all);
+	long long last_executed = m_db.GetLastExecuted(m_id);
+
+	// 表示
+	m_result_total_time_incl_subitems->SetLabel(TimeUtils::FormatSeconds(total_sec_incl_subitems));
+	m_result_total_time_selected->SetLabel(TimeUtils::FormatSeconds(total_sec_all));
+	m_last_executed->SetLabel(TimeUtils::FormatEpochToDate(last_executed));
 }

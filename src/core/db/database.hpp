@@ -56,6 +56,7 @@ public:
 		int is_folder;
 	};
 	bool GetAllCategories(std::vector<Category>& out);
+	bool GetChildCategories(std::vector<int>& out, int id); // id 以下の is_folder = 0 の項目 id を全て取得
 	int  GetParentId(int id);
 	bool UpdateCategories(int id, const std::string& name);
 	// ------

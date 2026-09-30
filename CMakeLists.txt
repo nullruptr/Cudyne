@@ -41,6 +41,7 @@ set(SOURCES
     src/core/db/db_report.cpp
     src/core/db/db_total.cpp
     src/core/utils/format_time.cpp
+    src/core/utils/utils.cpp
     src/gui/common/sel_category_dlg/sel_category_dlg.cpp
     src/gui/common/sel_todo_dlg/sel_todo_dlg.cpp
     src/gui/connect_db/connect_db.cpp

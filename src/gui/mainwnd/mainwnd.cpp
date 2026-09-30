@@ -22,7 +22,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	wxLogMessage("Log System Initialized.");
 	*/
         // notify wxAUI which frame to use
-	SetSize(FromDIP(wxSize(1600, 800)));
+	SetSize(FromDIP(wxSize(1600, 1000)));
         m_mgr.SetManagedWindow(this);
 
 	// メニュー内容の設定
@@ -91,11 +91,13 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 
 	// Notebook を aui に登録
 	m_mgr.AddPane(m_right_notebook, wxAuiPaneInfo()
-	    .Right()
+	    .Left()
 	    .Caption(_("Reports"))
 	    .Name(wxT("RightNotebook"))
-	    .BestSize(FromDIP(400), -1)
+	    .BestSize(FromDIP(800), -1)
 	    .Layer(1)
+	    .Row(2) // Controller/Inspector/Statistic (Row 1) の右隣
+	    .Position(0)
 	    .CloseButton(false)
 	);
 
@@ -116,7 +118,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Caption(_("Recording"))
         .Name(wxT("Recording_wnd"))
         .BestSize(FromDIP(333), FromDIP(333))
-        .Layer(0)
+        .Layer(1)
 	.Position(0)
 	.PaneBorder(true)
 	.CloseButton(false) // 閉じるボタン無効
@@ -137,7 +139,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Left()
         .Caption(_("Controller"))
         .Name(wxT("Controller"))
-        .BestSize(FromDIP(300), -1)
+        .BestSize(FromDIP(400), -1)
         .Layer(1)
 	.Row(1) // 左側のエリアの 1番目
 	.Position(0)
@@ -148,7 +150,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Left()
         .Caption(_("Inspector"))
         .Name(wxT("Inspector"))
-        .BestSize(FromDIP(300), -1)
+        .BestSize(FromDIP(400), -1)
         .Layer(1)
 	.Row(1) // 左側のエリアの 1番目
 	.Position(1)
@@ -159,7 +161,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Left()
         .Caption(_("Statistic"))
         .Name(wxT("Statistic"))
-        .BestSize(FromDIP(300), -1)
+        .BestSize(FromDIP(400), -1)
         .Layer(1)
 	.Row(1) // 左側のエリアの 1番目
 	.Position(2)

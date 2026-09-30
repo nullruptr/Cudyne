@@ -16,6 +16,8 @@ private:
 	int m_selected_id;
 	wxStaticText* m_result_total_time_all;
 	wxStaticText* m_result_total_time_range;
+	wxStaticText* m_result_total_time_all_incl;
+	wxStaticText* m_result_total_time_range_incl;
 	wxStaticText* m_last_executed;
 	wxDateTime m_current_start;
 	wxDateTime m_current_end;

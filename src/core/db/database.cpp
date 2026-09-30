@@ -288,6 +288,34 @@ bool Database::GetAllCategories(std::vector<Category> &out){ // 全カテゴリ�
     }
 }
 
+bool Database::GetChildCategories(std::vector<int> &out, int id){ // id 以下の is_folder = 0 の項目 id を全て取得
+	out.clear(); // 安全のため最初に初期化
+
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+	// 再帰 CTE で、id 配下の全項目(フォルダ含む)をたどり、フォルダ以外の id のみ返す
+	soci::rowset<int> rs = (sql.prepare <<
+	    "WITH RECURSIVE tree(id, is_folder) AS ("
+	    "  SELECT id, is_folder FROM categories WHERE parent_id = :id AND is_hidden = 0 "
+	    "  UNION ALL "
+	    "  SELECT c.id, c.is_folder FROM categories c "
+	    "  JOIN tree t ON c.parent_id = t.id "
+	    "  WHERE c.is_hidden = 0"
+	    ") "
+	    "SELECT id FROM tree WHERE is_folder = 0;",
+	    soci::use(id));
+
+	for (auto it = rs.begin(); it != rs.end(); ++it) {
+	    out.push_back(*it);
+	}
+	return true;
+    } catch (const soci::soci_error& e) {
+	std::cerr << "GetChildCategories Error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
 int Database::GetParentId(int id) {
     int parent_id = 0;
     try {
