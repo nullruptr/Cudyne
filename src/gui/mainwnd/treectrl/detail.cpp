@@ -84,6 +84,9 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
     pnlDetail->SetSizer(rightBoxSizer);
     this->SetSizer(mainSizer);
 	CenterOnParent(); // 親ウィンドウの真ん中に表示する
+
+    SetBackgroundColour(wxColour(189, 255, 255));
+    pnlDetail->Refresh();
     
     wxCommandEvent evt;
     OnSetTextOfDetail(evt);
