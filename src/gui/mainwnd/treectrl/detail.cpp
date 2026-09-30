@@ -1,5 +1,7 @@
 #include <wx/event.h>
 #include <wx/sizer.h>
+#include <wx/string.h>
+#include <wx/stringimpl.h>
 #include <wx/versioninfo.h>
 #include <wx/wx.h>
 #include <wx/notebook.h>
@@ -20,8 +22,8 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	mainSizer->Add(pnlDetail, 1, wxEXPAND, 0);
 
     wxBoxSizer* rightBoxSizer = new wxBoxSizer(wxVERTICAL);
-    wxStaticText* detail_st = new wxStaticText(pnlDetail, wxID_ANY, _("Detail"));
-    rightBoxSizer->Add(detail_st, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, 10);
+    m_title = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
+    rightBoxSizer->Add(m_title, 0, wxALIGN_CENTER_HORIZONTAL | wxTOP, 10);
 	// 2列 (ラベル / 値)、行数は項目数に応じて自動
 	wxFlexGridSizer* flex = new wxFlexGridSizer(0, 2, FromDIP(8), FromDIP(20));
 	flex->AddGrowableCol(1, 1); // 値の列を伸縮させる
@@ -89,7 +91,17 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
     pnlDetail->Refresh();
     
     wxCommandEvent evt;
+    OnSetTitle(evt);
     OnSetTextOfDetail(evt);
+    pnlDetail->Refresh();
+}
+
+void Detail::OnSetTitle(wxCommandEvent &event) {
+    std::string title_str = m_db.GetCategoryName(m_id);
+    m_title->SetLabel(wxString::FromUTF8(title_str));
+
+    wxFont font(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+    m_title->SetFont(font);
 }
 
 void Detail::OnSetTextOfDetail(wxCommandEvent &event) {

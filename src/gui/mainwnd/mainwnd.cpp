@@ -117,7 +117,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         .Bottom()
         .Caption(_("Recording"))
         .Name(wxT("Recording_wnd"))
-        .BestSize(FromDIP(333), FromDIP(333))
+        .BestSize(FromDIP(333), FromDIP(120))
         .Layer(1)
 	.Position(0)
 	.PaneBorder(true)

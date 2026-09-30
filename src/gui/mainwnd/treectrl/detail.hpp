@@ -9,6 +9,7 @@ public:
 private:
     Database &m_db;
     int m_id;
+	wxStaticText* m_title;
 	wxStaticText* m_result_total_time_incl_subitems;
 	wxStaticText* m_result_total_time_selected;
 	wxStaticText* m_last_executed;
@@ -18,5 +19,6 @@ private:
 	wxStaticText* m_deadline;
 	wxStaticText* m_time_to_deadline;
 
+	void OnSetTitle(wxCommandEvent& event);
 	void OnSetTextOfDetail(wxCommandEvent& event);
 };
