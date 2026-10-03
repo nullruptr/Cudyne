@@ -2,6 +2,7 @@
 #include "core/utils/format_time.hpp"
 #include "gui/common/sel_category_dlg/sel_category_dlg.hpp"
 #include "gui/common/sel_todo_dlg/sel_todo_dlg.hpp"
+#include <cmath>
 #include <wx/sizer.h>
 #include <wx/wx.h>
 
@@ -109,7 +110,7 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int
 
     // Target time
     m_sc_target_value = new wxSpinCtrlDouble(this, wxID_ANY, "60", wxDefaultPosition, FromDIP(wxSize(90, -1)), wxSP_ARROW_KEYS, 0, 1000000, 60, 1);
-    m_sc_target_value->SetDigits(0);
+    m_sc_target_value->SetDigits(2); // 2.5 minutes などの小数入力を許可する
     wxArrayString units;
     units.Add(_("seconds"));
     units.Add(_("minutes"));
@@ -230,7 +231,7 @@ void EditGoalDlg::OnCancel(wxCommandEvent& WXUNUSED(event)) {
 
 void EditGoalDlg::OnSelect(wxCommandEvent& WXUNUSED(event)) {
     if (m_ch_target_kind->GetSelection() == KIND_CATEGORY) {
-        SelCategoryDlg dlg(this, m_db);
+        SelCategoryDlg dlg(this, m_db, true); // Goal はフォルダにも設定できる
         if (dlg.ShowModal() == wxID_OK) {
             m_category_id = dlg.GetSelectedCategoryId();
         }
@@ -271,9 +272,10 @@ void EditGoalDlg::UpdatePeriodControls() {
 long long EditGoalDlg::GetTargetSeconds() const {
     const double value = m_sc_target_value->GetValue();
     switch (m_ch_target_unit->GetSelection()) {
-    case UNIT_MINUTES: return static_cast<long long>(value * 60);
-    case UNIT_HOURS:   return static_cast<long long>(value * 3600);
-    default:           return static_cast<long long>(value);
+    // 浮動小数点の誤差で 1 秒ずれないよう、切り捨てではなく四捨五入する
+    case UNIT_MINUTES: return std::llround(value * 60);
+    case UNIT_HOURS:   return std::llround(value * 3600);
+    default:           return std::llround(value);
     }
 }
 
