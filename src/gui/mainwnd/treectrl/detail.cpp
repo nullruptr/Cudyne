@@ -8,6 +8,7 @@
 #include "detail.hpp"
 #include "core/utils/format_time.hpp"
 #include "core/utils/utils.hpp"
+#include "gui/goal/edit_goal_dlg.hpp"
 
 Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	: wxFrame(parent, wxID_ANY, wxT("Detail"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT)
@@ -69,6 +70,11 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 
 	wxButton* btn_setup_goal = new wxButton(pnlDetail, wxID_ANY, _("Setup Goal"));
 	wxButton* btn_setup_plan = new wxButton(pnlDetail, wxID_ANY, _("Setup Plan"));
+
+	btn_setup_goal->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+		EditGoalDlg dlg(this, m_db);
+		dlg.ShowModal();
+	});
 
 	wxBoxSizer* btnSizer = new wxBoxSizer(wxHORIZONTAL);
 	btnSizer->Add(btn_setup_goal, 0, wxLEFT, FromDIP(8));
