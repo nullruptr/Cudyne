@@ -8,7 +8,7 @@
 #include "detail.hpp"
 #include "core/utils/format_time.hpp"
 #include "core/utils/utils.hpp"
-#include "gui/goal/edit_goal_dlg.hpp"
+#include "gui/goal/goal_list_dlg.hpp"
 
 Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	: wxFrame(parent, wxID_ANY, wxT("Detail"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT)
@@ -72,7 +72,8 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	wxButton* btn_setup_plan = new wxButton(pnlDetail, wxID_ANY, _("Setup Plan"));
 
 	btn_setup_goal->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
-		EditGoalDlg dlg(this, m_db, m_id);
+		// 同じ対象に複数の goal を持てるので、一覧から選んで編集・新規作成する
+		GoalListDlg dlg(this, m_db, m_id);
 		dlg.ShowModal();
 	});
 

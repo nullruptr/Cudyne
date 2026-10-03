@@ -88,6 +88,25 @@ public:
 	std::vector<Database::ToDo> GetTodoList(ToDoFilter filter = ToDoFilter::All);
 	Database::ToDo GetTodoById(int todo_id);
 
+	// --- Goal (db_goal.cpp) ---
+	struct Goal {
+		int goal_id = -1;
+		int category_id = -1;  // -1 = NULL (category_id / todo_id はどちらか一方のみ設定)
+		int todo_id = -1;      // -1 = NULL
+		std::string goal_name;
+		int period_type = 0;   // 0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS
+		int period_n = -1;     // -1 = NULL (period_type=3 のときのみ)
+		long long target_time = 0; // 期間ごとの目標(単位:sec)
+		std::string start_time;    // 開始日時(UTC)
+		std::string end_time;      // 終了日時(UTC)。空 = NULL (期限なし)
+		int is_active = 1;
+		std::string memo;
+	};
+	bool InsertGoal(const Goal& goal);
+	bool UpdateGoal(const Goal& goal);
+	Database::Goal GetGoalById(int goal_id); // 見つからなければ goal_id = -1
+	std::vector<Database::Goal> GetGoalsByTarget(int category_id, int todo_id); // 対象(どちらか一方、使わない方は -1)に設定された goal を ID 順に列挙
+	bool DeleteGoal(int goal_id);
 	void Close(); // DB クローズ処理
 	
     // --- db_report.cpp ---

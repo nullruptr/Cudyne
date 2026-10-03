@@ -37,6 +37,7 @@ find_package(SOCI CONFIG REQUIRED)
 set(SOURCES
     src/core/clock/now_wxstring.cpp
     src/core/db/database.cpp
+    src/core/db/db_goal.cpp
     src/core/db/db_record.cpp
     src/core/db/db_report.cpp
     src/core/db/db_total.cpp
@@ -53,6 +54,7 @@ set(SOURCES
     src/gui/mainwnd/record_viewer/record_viewer.cpp
     src/gui/mainwnd/recording/recording.cpp
     src/gui/goal/edit_goal_dlg.cpp
+    src/gui/goal/goal_list_dlg.cpp
     src/gui/mainwnd/statistic/statistic.cpp
     src/gui/mainwnd/treectrl/detail.cpp
     src/gui/mainwnd/treectrl/treectrl.cpp

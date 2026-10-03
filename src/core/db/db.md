@@ -49,11 +49,12 @@ erDiagram
         integer id PK
         integer category_id FK "category_id / todo_id はどちらか一方のみ設定。フォルダを選択したらそれ以下のcategoryの実績も合算して進捗計算(子に個別goalがあっても二重カウントでよい)"
         integer todo_id FK
-        text goal_name
+        text goal_name "任意(空文字可)。同じ対象に複数のgoalを持てる"
         integer period_type "0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS"
         integer period_n "period_type=3のとき、3日に1回など"
         integer target_time "期間ごとの目標(単位:sec)"
-        text start_date "日付集計基準日"
+        text start_time "開始日時(UTC)"
+        text end_time "終了日時(UTC)。NULL=期限なし"
         integer is_active "有効1/無効0"
         text memo "メモ"
     }
