@@ -11,9 +11,16 @@ enum PeriodType { PERIOD_DAILY = 0, PERIOD_WEEKLY, PERIOD_MONTHLY, PERIOD_EVERY_
 enum TargetUnit { UNIT_SECONDS = 0, UNIT_MINUTES, UNIT_HOURS };
 }
 
-EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef)
+EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int todo_id)
     : wxDialog(parent, wxID_ANY, _("Goal"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
     , m_db(dbRef) {
+
+    // 初期選択
+    if (category_id != -1) {
+        m_category_id = category_id;
+    } else if (todo_id != -1) {
+        m_todo_id = todo_id;
+    }
 
     // ウィンドウが初期化された後に FromDIP しないとクラッシュする
     SetSize(FromDIP(wxSize(520, 600)));
@@ -38,7 +45,7 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef)
     kinds.Add(_("Category"));
     kinds.Add(_("ToDo"));
     m_ch_target_kind = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, kinds);
-    m_ch_target_kind->SetSelection(KIND_CATEGORY);
+    m_ch_target_kind->SetSelection(m_todo_id != -1 ? KIND_TODO : KIND_CATEGORY);
     wxButton* btn_select = new wxButton(this, wxID_ANY, _("Select"));
     wxBoxSizer* kind_sizer = new wxBoxSizer(wxHORIZONTAL);
     kind_sizer->Add(m_ch_target_kind, 1, wxALIGN_CENTER_VERTICAL);
@@ -167,12 +174,8 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef)
         m_tc_start_ss->SetValue(now.Format("%S"));
     });
 
-    // 種別を切り替えたら選択をリセットする
-    m_ch_target_kind->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
-        m_category_id = -1;
-        m_todo_id = -1;
-        UpdateSelectedName();
-    });
+    // 種別を切り替えたら、その種別で保持している選択を表示に反映する
+    m_ch_target_kind->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) { UpdateSelectedName(); });
     m_ch_period_type->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) { UpdatePeriodControls(); });
     m_sc_target_value->Bind(wxEVT_SPINCTRLDOUBLE, [this](wxSpinDoubleEvent&) { UpdateTargetSeconds(); });
     m_sc_target_value->Bind(wxEVT_TEXT, [this](wxCommandEvent&) { UpdateTargetSeconds(); });
@@ -196,7 +199,9 @@ void EditGoalDlg::OnSave(wxCommandEvent& WXUNUSED(event)) {
         wxMessageBox(_("Please enter a goal name"), "Error", wxOK | wxICON_WARNING);
         return;
     }
-    if (m_category_id == -1 && m_todo_id == -1) {
+    // 選択中の種別の ID だけが有効 (category_id / todo_id はどちらか一方のみ保存する)
+    const bool is_category = m_ch_target_kind->GetSelection() == KIND_CATEGORY;
+    if ((is_category ? m_category_id : m_todo_id) == -1) {
         wxMessageBox(_("Please select a category or todo"), "Error", wxOK | wxICON_WARNING);
         return;
     }
@@ -210,7 +215,7 @@ void EditGoalDlg::OnSave(wxCommandEvent& WXUNUSED(event)) {
     }
 
     // TODO: goal テーブルへの保存は Database に Goal の API を追加してから実装する
-    //   category_id / todo_id : m_category_id / m_todo_id
+    //   category_id / todo_id : 選択中の種別の方だけ (is_category ? m_category_id : m_todo_id)、もう一方は NULL
     //   goal_name             : m_tc_name
     //   period_type / period_n: m_ch_period_type / m_sc_every_n
     //   target_time           : GetTargetSeconds()
@@ -228,24 +233,24 @@ void EditGoalDlg::OnSelect(wxCommandEvent& WXUNUSED(event)) {
         SelCategoryDlg dlg(this, m_db);
         if (dlg.ShowModal() == wxID_OK) {
             m_category_id = dlg.GetSelectedCategoryId();
-            m_todo_id = -1;
         }
     } else {
         SelToDoDlg dlg(this, m_db);
         if (dlg.ShowModal() == wxID_OK) {
             m_todo_id = dlg.GetSelectedTodoId();
-            m_category_id = -1;
         }
     }
     UpdateSelectedName();
 }
 
 void EditGoalDlg::UpdateSelectedName() {
-    if (m_category_id != -1) {
+    // 現在選択中の種別のメンバ変数だけを参照する (もう一方は保持したまま)
+    const bool is_category = m_ch_target_kind->GetSelection() == KIND_CATEGORY;
+    if (is_category && m_category_id != -1) {
         m_st_selected_name->SetLabel(wxString::FromUTF8(m_db.GetCategoryName(m_category_id)));
         m_st_selected_path->SetLabel(wxString::FromUTF8(m_db.GetCategoriesPath(m_category_id)));
         m_st_selected_id->SetLabel(wxString::Format("%d", m_category_id));
-    } else if (m_todo_id != -1) {
+    } else if (!is_category && m_todo_id != -1) {
         m_st_selected_name->SetLabel(wxString::FromUTF8(m_db.GetTodoById(m_todo_id).todo_name));
         m_st_selected_path->SetLabel("-"); // ToDo にはパスがない
         m_st_selected_id->SetLabel(wxString::Format("%d", m_todo_id));

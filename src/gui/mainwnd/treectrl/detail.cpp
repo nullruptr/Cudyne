@@ -72,7 +72,7 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	wxButton* btn_setup_plan = new wxButton(pnlDetail, wxID_ANY, _("Setup Plan"));
 
 	btn_setup_goal->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
-		EditGoalDlg dlg(this, m_db);
+		EditGoalDlg dlg(this, m_db, m_id);
 		dlg.ShowModal();
 	});
 

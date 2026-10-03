@@ -6,7 +6,7 @@
 
 class EditGoalDlg : public wxDialog {
 public:
-    EditGoalDlg(wxWindow* parent, Database& db);
+    EditGoalDlg(wxWindow* parent, Database& db, int category_id = -1, int todo_id = -1);
 
 private:
     Database& m_db;
