@@ -9,6 +9,7 @@ wxString PeriodText(const Database::Goal& g) {
     case 1: return _("Weekly");
     case 2: return _("Monthly");
     case 3: return wxString::Format(_("Every %d Days"), g.period_n);
+    case 4: return _("Undefined");
     default: return "-";
     }
 }

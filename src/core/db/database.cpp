@@ -108,7 +108,7 @@ bool Database::Initialize(){
 		"category_id INTEGER," // category_id / todo_id はどちらか一方のみ設定
 		"todo_id INTEGER,"
 		"goal_name TEXT NOT NULL DEFAULT ''," // 任意(空文字可)。同じ対象に複数の goal を持てる
-		"period_type INTEGER NOT NULL DEFAULT 0," // 0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS
+		"period_type INTEGER NOT NULL DEFAULT 0," // 0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS, 4:UNDEFINED(周期未定義)
 		"period_n INTEGER," // period_type=3 のときのみ
 		"target_time INTEGER NOT NULL," // 期間ごとの目標(単位:sec)
 		"start_time TEXT NOT NULL," // 開始日時(UTC)

@@ -94,7 +94,7 @@ public:
 		int category_id = -1;  // -1 = NULL (category_id / todo_id はどちらか一方のみ設定)
 		int todo_id = -1;      // -1 = NULL
 		std::string goal_name;
-		int period_type = 0;   // 0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS
+		int period_type = 0;   // 0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS, 4:UNDEFINED(周期未定義)
 		int period_n = -1;     // -1 = NULL (period_type=3 のときのみ)
 		long long target_time = 0; // 期間ごとの目標(単位:sec)
 		std::string start_time;    // 開始日時(UTC)

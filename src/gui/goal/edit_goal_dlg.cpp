@@ -3,12 +3,13 @@
 #include "gui/common/sel_category_dlg/sel_category_dlg.hpp"
 #include "gui/common/sel_todo_dlg/sel_todo_dlg.hpp"
 #include <cmath>
+#include <wx/dateevt.h>
 #include <wx/sizer.h>
 #include <wx/wx.h>
 
 namespace {
 enum TargetKind { KIND_CATEGORY = 0, KIND_TODO = 1 };
-enum PeriodType { PERIOD_DAILY = 0, PERIOD_WEEKLY, PERIOD_MONTHLY, PERIOD_EVERY_N_DAYS };
+enum PeriodType { PERIOD_DAILY = 0, PERIOD_WEEKLY, PERIOD_MONTHLY, PERIOD_EVERY_N_DAYS, PERIOD_UNDEFINED };
 enum TargetUnit { UNIT_SECONDS = 0, UNIT_MINUTES, UNIT_HOURS };
 }
 
@@ -91,6 +92,7 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int
     periods.Add(_("Weekly"));
     periods.Add(_("Monthly"));
     periods.Add(_("Every n Days"));
+    periods.Add(_("Undefined"));
     m_ch_period_type = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, periods);
     m_ch_period_type->SetSelection(PERIOD_DAILY);
     grid->Add(new wxStaticText(this, wxID_ANY, _("Period Type")), labelFlags);
@@ -241,7 +243,12 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int
         m_dp_end->SetValue(now);
         m_tc_end_hhmm->SetValue(now.Format("%H:%M"));
         m_tc_end_ss->SetValue(now.Format("%S"));
+        UpdateTargetLimit();
+        UpdateTargetWarning();
     });
+    // 日付を変えたときも、周期未定義の上限を更新する
+    m_dp_start->Bind(wxEVT_DATE_CHANGED, [this](wxDateEvent&) { UpdateTargetLimit(); UpdateTargetWarning(); });
+    m_dp_end->Bind(wxEVT_DATE_CHANGED,   [this](wxDateEvent&) { UpdateTargetLimit(); UpdateTargetWarning(); });
     btn_select->Bind(wxEVT_BUTTON, &EditGoalDlg::OnSelect, this);
     btn_save->Bind(wxEVT_BUTTON, &EditGoalDlg::OnSave, this);
     btn_cancel->Bind(wxEVT_BUTTON, &EditGoalDlg::OnCancel, this);
@@ -251,6 +258,8 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int
         m_dp_start->SetValue(now);
         m_tc_start_hhmm->SetValue(now.Format("%H:%M"));
         m_tc_start_ss->SetValue(now.Format("%S"));
+        UpdateTargetLimit();
+        UpdateTargetWarning();
     });
 
     // 種別を切り替えたら、その種別で保持している選択を表示に反映する
@@ -295,6 +304,8 @@ void EditGoalDlg::UpdateEndControls() {
     m_tc_end_hhmm->Enable(enabled);
     m_tc_end_ss->Enable(enabled);
     m_btn_end_now->Enable(enabled);
+    UpdateTargetLimit(); // 周期未定義のときは End の有無で最大稼働時間が変わる
+    UpdateTargetWarning();
 }
 
 void EditGoalDlg::OnSave(wxCommandEvent& WXUNUSED(event)) {
@@ -312,11 +323,6 @@ void EditGoalDlg::OnSave(wxCommandEvent& WXUNUSED(event)) {
         wxMessageBox(_("Please enter a target time"), "Error", wxOK | wxICON_WARNING);
         return;
     }
-    if (GetTargetSeconds() > GetPeriodSeconds()) {
-        UpdateTargetWarning(); // 赤字の警告も最新にしたうえで、ポップアップでも知らせる
-        wxMessageBox(_("Target time exceeds the length of the period"), "Error", wxOK | wxICON_WARNING);
-        return;
-    }
 
     // 表示はシステム(ローカル)時間、保存は UTC
     const std::string start_time = TimeUtils::BuildUTCString(m_dp_start->GetValue(), m_tc_start_hhmm->GetValue(), m_tc_start_ss->GetValue());
@@ -332,6 +338,15 @@ void EditGoalDlg::OnSave(wxCommandEvent& WXUNUSED(event)) {
             wxMessageBox(_("End time must be after start time"), "Error", wxOK | wxICON_WARNING);
             return;
         }
+    }
+
+    // 期間の長さ(周期未定義のときは Start〜End)を超える目標は登録できない。上限なし(-1)ならチェックしない
+    // 周期未定義の上限は End に依存するので、End の検証のあとで判定する
+    const long long period = GetPeriodSeconds();
+    if (period >= 0 && GetTargetSeconds() > period) {
+        UpdateTargetWarning(); // 赤字の警告も最新にしたうえで、ポップアップでも知らせる
+        wxMessageBox(_("Target time exceeds the length of the period"), "Error", wxOK | wxICON_WARNING);
+        return;
     }
 
     Database::Goal goal;
@@ -423,24 +438,43 @@ long long EditGoalDlg::GetPeriodSeconds() const {
     case PERIOD_WEEKLY:       return 7 * day;
     case PERIOD_MONTHLY:      return 31 * day; // 最大の月に合わせる(有効な目標を弾かないため)
     case PERIOD_EVERY_N_DAYS: return m_sc_every_n->GetValue() * day;
+    case PERIOD_UNDEFINED: {
+        // 周期未定義: End があれば Start との差分が最大稼働時間。End がなければ上限なし(-1)
+        if (!m_cb_end->GetValue()) return -1;
+        if (m_tc_start_hhmm->GetValue().IsEmpty() || m_tc_start_ss->GetValue().IsEmpty() ||
+            m_tc_end_hhmm->GetValue().IsEmpty()   || m_tc_end_ss->GetValue().IsEmpty()) return -1;
+        const long long start = TimeUtils::ParseUTCStringToEpoch(
+            TimeUtils::BuildUTCString(m_dp_start->GetValue(), m_tc_start_hhmm->GetValue(), m_tc_start_ss->GetValue()));
+        const long long end = TimeUtils::ParseUTCStringToEpoch(
+            TimeUtils::BuildUTCString(m_dp_end->GetValue(), m_tc_end_hhmm->GetValue(), m_tc_end_ss->GetValue()));
+        return end > start ? end - start : 0; // End が Start 以前なら、何も登録できない
+    }
     default:                  return day;      // DAILY
     }
 }
 
 void EditGoalDlg::UpdateTargetLimit() {
-    // 最大稼働時間 (期間の長さ) を、選択中の単位で表示する。常に整数になる(期間は 1 時間の倍数)
+    // 最大稼働時間 (期間の長さ) を、選択中の単位で表示する
     double divisor = 1;
     switch (m_ch_target_unit->GetSelection()) {
     case UNIT_MINUTES: divisor = 60;   break;
     case UNIT_HOURS:   divisor = 3600; break;
     default: break;
     }
-    m_st_target_max->SetLabel(wxString::Format("/ %.0f", GetPeriodSeconds() / divisor));
+    const long long period = GetPeriodSeconds();
+    if (period < 0) {
+        m_st_target_max->SetLabel("/ -"); // 上限なし
+    } else {
+        // seconds は整数、minutes / hour は小数第 2 位まで表示する (周期未定義だと端数が出るため)
+        const int digits = (divisor == 1) ? 0 : 2;
+        m_st_target_max->SetLabel(wxString::Format("/ %.*f", digits, period / divisor));
+    }
     Layout();
 }
 
 void EditGoalDlg::UpdateTargetWarning() {
-    const bool over = GetTargetSeconds() > GetPeriodSeconds();
+    const long long period = GetPeriodSeconds();
+    const bool over = period >= 0 && GetTargetSeconds() > period;
     m_st_target_warn->SetLabel(over ? _("Target time exceeds the maximum working time of the period") : wxString());
     Layout();
 }
@@ -453,6 +487,8 @@ void EditGoalDlg::OnValidateHHMM(wxTextCtrl* tc) {
     } else {
         tc->SetValue(result);
     }
+    UpdateTargetLimit(); // Start / End が変わると周期未定義の上限も変わる
+    UpdateTargetWarning();
 }
 
 void EditGoalDlg::OnValidateSS(wxTextCtrl* tc) {
@@ -463,4 +499,6 @@ void EditGoalDlg::OnValidateSS(wxTextCtrl* tc) {
     } else {
         tc->SetValue(result);
     }
+    UpdateTargetLimit();
+    UpdateTargetWarning();
 }
