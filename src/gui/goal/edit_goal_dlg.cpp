@@ -14,7 +14,7 @@ enum TargetUnit { UNIT_SECONDS = 0, UNIT_MINUTES, UNIT_HOURS };
 }
 
 EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int todo_id, int goal_id)
-    : wxDialog(parent, wxID_ANY, _("Goal"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
+    : wxDialog(parent, wxID_ANY, _("Edit Goal"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
     , m_db(dbRef) {
 
     // 編集モード: 保存済みの goal を読み込む (見つからなければ新規として扱う)

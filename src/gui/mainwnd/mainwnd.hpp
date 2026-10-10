@@ -21,6 +21,7 @@ enum {
 	ID_CONNECT_DB, //DBファイル
 	ID_SETTINGS, //設定ウィンドウ
 	ID_MENU_TODO, //TODO ウィンドウ
+	ID_MENU_GOAL, //GOAL ウィンドウ
 	ID_TIME_LOG, //時間記録画面
 	ID_ACTIVITY_REPORT, // 実績照会ウィンドウ表示
 	ID_CATEGORY_SELECTED = wxID_HIGHEST + 1, // TreeCtrl からの情報受取
@@ -36,7 +37,8 @@ public:
 Mainwnd(wxWindow* parent);
 	void OnTimer(wxTimerEvent &event); // 時間表示をリアルタイムで行うために必要
 	void OnQuit(wxCommandEvent &event); // 終了インベント処理
-	void OnTodo(wxCommandEvent &event); // 終了インベント処理
+	void OnTodo(wxCommandEvent &event); // ToDoイベント処理
+	void OnGoal(wxCommandEvent &event); // Goalイベント処理
 	void OnTimeLog(wxCommandEvent &event); // 時間記録画面を開く
 	void OnConnectDB(wxCommandEvent &event);
 	void OnDPIChanged(wxDPIChangedEvent& event);

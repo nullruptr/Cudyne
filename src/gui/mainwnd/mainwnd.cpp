@@ -11,6 +11,7 @@
 #include "gui/time_log/time_log.hpp"
 #include "gui/connect_db/connect_db.hpp"
 #include "gui/mainwnd/treectrl/treectrl.hpp"
+#include "gui/goal/goal.hpp"
 #include "core/db/database.hpp"
 
 Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
@@ -34,6 +35,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 
 	wxMenu* menuTools = new wxMenu;
 	menuTools->Append(ID_MENU_TODO, _("ToDo"));
+	menuTools->Append(ID_MENU_GOAL, _("Goal"));
 
 	wxMenu *menuLegacy = new wxMenu;
 	menuLegacy->Append(ID_TIME_LOG, _("Time Log"));
@@ -49,6 +51,7 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
 	Bind(wxEVT_MENU, &Mainwnd::OnConnectDB, this, ID_CONNECT_DB);
 	Bind(wxEVT_MENU, &Mainwnd::OnQuit, this, wxID_EXIT);
 	Bind(wxEVT_MENU, &Mainwnd::OnTodo, this, ID_MENU_TODO);
+	Bind(wxEVT_MENU, &Mainwnd::OnGoal, this, ID_MENU_GOAL);
 	Bind(wxEVT_MENU, &Mainwnd::OnTimeLog, this, ID_TIME_LOG);
 
 	// 発火イベント受信用
@@ -214,6 +217,24 @@ void Mainwnd::OnTodo(wxCommandEvent& event) {
 	wxLogDebug("DB check passed");
 	ToDo* todo = new ToDo(this, db);
 	todo->Show(true);
+
+}
+
+void Mainwnd::OnGoal(wxCommandEvent& event) {
+	wxLogDebug("OnTodo called");
+	// DB 接続判定
+	if (current_DB_Path.IsEmpty()){
+		wxMessageBox(
+				_("Unable to connect database"),
+				"DB Error",
+				wxOK | wxICON_ERROR,
+				this
+			    );
+		return;
+	}
+	wxLogDebug("DB check passed");
+	Goal* goal = new Goal(this, db);
+	goal->Show(true);
 
 }
 
