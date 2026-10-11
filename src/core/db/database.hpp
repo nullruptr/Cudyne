@@ -106,6 +106,7 @@ public:
 	bool UpdateGoal(const Goal& goal);
 	Database::Goal GetGoalById(int goal_id); // 見つからなければ goal_id = -1
 	std::vector<Database::Goal> GetGoalsByTarget(int category_id, int todo_id); // 対象(どちらか一方、使わない方は -1)に設定された goal を ID 順に列挙
+	std::vector<Database::Goal> GetAllGoals(); // 全 goal を ID 順に列挙
 	bool DeleteGoal(int goal_id);
 	void Close(); // DB クローズ処理
 	
@@ -119,6 +120,7 @@ public:
     std::vector<Database::Record> GetUnfinishedRecords(); // 終了していない(time_end未設定の) record を列挙
 	// --- db_total.cpp ---
 	long long int GetTotalTime(int category_id, const std::string& start_utc, const std::string& end_utc);
+	long long int GetTotalTimeByTodo(int todo_id, const std::string& start_utc, const std::string& end_utc); // todo_id に紐付く record の合計(秒)
 
 private:
 	sqlite3* db;

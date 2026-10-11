@@ -1,19 +1,7 @@
 #include "goal_list_dlg.hpp"
 #include "edit_goal_dlg.hpp"
+#include "goal_text.hpp"
 #include "core/utils/format_time.hpp"
-
-namespace {
-wxString PeriodText(const Database::Goal& g) {
-    switch (g.period_type) {
-    case 0: return _("Daily");
-    case 1: return _("Weekly");
-    case 2: return _("Monthly");
-    case 3: return wxString::Format(_("Every %d Days"), g.period_n);
-    case 4: return _("Undefined");
-    default: return "-";
-    }
-}
-}
 
 GoalListDlg::GoalListDlg(wxWindow* parent, Database& dbRef, int category_id, int todo_id)
     : wxDialog(parent, wxID_ANY, _("Goals"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
@@ -76,7 +64,7 @@ void GoalListDlg::Reload() {
 
         // 名前は任意なので、空のときは代わりの表示にする
         long idx = m_list->InsertItem((long)i, g.goal_name.empty() ? wxString(_("(no name)")) : wxString::FromUTF8(g.goal_name));
-        m_list->SetItem(idx, 1, PeriodText(g));
+        m_list->SetItem(idx, 1, GoalPeriodText(g));
         m_list->SetItem(idx, 2, TimeUtils::FormatSeconds(g.target_time));
         m_list->SetItem(idx, 3, TimeUtils::FormatUTCStringToLocal(g.start_time));
         m_list->SetItem(idx, 4, g.end_time.empty() ? wxString("-") : TimeUtils::FormatUTCStringToLocal(g.end_time));

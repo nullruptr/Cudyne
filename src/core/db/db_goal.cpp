@@ -89,6 +89,25 @@ std::vector<Database::Goal> Database::GetGoalsByTarget(int category_id, int todo
     return results;
 }
 
+std::vector<Database::Goal> Database::GetAllGoals() {
+    std::vector<Goal> results;
+    if (sql.get_backend() == nullptr) return results;
+
+    try {
+        std::vector<int> ids;
+        soci::rowset<int> rs = (sql.prepare << "SELECT id FROM goal ORDER BY id");
+        for (int id : rs) ids.push_back(id);
+
+        for (int id : ids) {
+            Goal g = GetGoalById(id);
+            if (g.goal_id != -1) results.push_back(g);
+        }
+    } catch (const soci::soci_error& e) {
+        std::cerr << "GetAllGoals Error: " << e.what() << std::endl;
+    }
+    return results;
+}
+
 bool Database::DeleteGoal(int goal_id) {
     if (sql.get_backend() == nullptr) return false;
 

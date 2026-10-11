@@ -1,23 +1,13 @@
 #pragma once
 #include <wx/event.h>
 #include <wx/wx.h>
-#include <wx/listctrl.h>
 #include <wx/datectrl.h>
 #include <wx/dateevt.h>
-#include <wx/timer.h>
 #include <wx/dataview.h>
+#include <wx/object.h>
+#include <vector>
 #include "core/db/database.hpp"
-
-// 列
-enum GoalColumn {
-    Col_Name,
-    Col_Period,
-    Col_Target,
-    Col_Start,
-    Col_End,
-    Col_Active,
-    Col_Count // 列の数(GetColumnCount で返す)
-};
+#include "goal_list_model.hpp"
 
 class Goal : public wxFrame{
 public:
@@ -28,8 +18,15 @@ private:
 	wxDatePickerCtrl* m_dp_filter_date; // この日付以降の締切のものを表示する(超過分は常に表示)
 	wxButton* m_btn_add;
 	wxButton* m_btn_edit;
-	wxTimer m_timer; // 締切等までのカウントダウンをリアルタイム更新する
+	wxButton* m_btn_refresh; // 押したときだけ評価をやり直す(自動更新はしない)
 
-    wxDataViewCtrl* m_ctrl;
-    void OnTimer(wxTimerEvent& WXUNUSED(event));
+	wxDataViewCtrl* m_ctrl;
+	wxObjectDataPtr<GoalListModel> m_model;
+	std::vector<GoalRow> m_all_rows; // Reload で評価した全行(フィルタ前)
+
+	void Reload();      // DB から全 goal を読み直して評価し、一覧を更新
+	void ApplyFilter(); // m_all_rows を Condition で絞り込んで表示
+	void AddGoal();            // 新規作成ダイアログを開く
+	void EditSelectedGoal();   // 選択中の goal の編集ダイアログを開く
+	void UpdateEditButton();   // 行が選択されているときだけ Edit を有効にする
 };
