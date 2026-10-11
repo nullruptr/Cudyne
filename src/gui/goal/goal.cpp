@@ -206,6 +206,22 @@ Goal::Goal(wxWindow* parent, Database &dbRef)
 
     Bind(wxEVT_TIMER, &Goal::OnTimer, this);
     m_timer.Start(1000); // 1 秒ごとに残り時間を再計算する
+
+    Bind(wxEVT_DPI_CHANGED, &Goal::OnDpiChanged, this);
+}
+
+void Goal::OnDpiChanged(wxDPIChangedEvent& event) {
+    event.Skip(); // ウィンドウサイズの調整など、既定の処理も行う
+
+    // DPI の切り替えが落ち着いてから、列幅を合わせ直す
+    CallAfter([this]() { FitColumns(); });
+}
+
+void Goal::FitColumns() {
+    for (unsigned i = 0; i < m_ctrl->GetColumnCount(); ++i) {
+        wxDataViewColumn* col = m_ctrl->GetColumn(i);
+        if (col) col->SetWidth(wxCOL_WIDTH_AUTOSIZE);
+    }
 }
 
 // 新規作成。保存されたら読み直す

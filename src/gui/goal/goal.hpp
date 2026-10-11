@@ -30,6 +30,8 @@ private:
 	void Reload();      // DB から全 goal を読み直して評価し、一覧を更新
 	void ApplyFilter(); // m_all_rows を Condition で絞り込んで表示
 	void OnTimer(wxTimerEvent& event);
+	void OnDpiChanged(wxDPIChangedEvent& event); // モニタの DPI が変わったとき
+	void FitColumns();                           // 列幅を内容に合わせて再計算する
 	void AddGoal();            // 新規作成ダイアログを開く
 	void EditSelectedGoal();   // 選択中の goal の編集ダイアログを開く
 	void UpdateEditButton();   // 行が選択されているときだけ Edit を有効にする
