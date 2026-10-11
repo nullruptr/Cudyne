@@ -23,9 +23,15 @@ inline std::string ToUtcString(long long epoch) {
     return buf;
 }
 
+struct Total {
+    long long seconds = 0;
+    bool recording = false; // 対象に記録中の record がある (実績が時間とともに増える)
+};
+
 // [from, to) の実績(秒)。Category はサブツリーを合算する。記録中の record は now までを含める
-inline long long Seconds(Database& db, const Database::Goal& g, long long from, long long to, long long now) {
-    if (to <= from) return 0;
+inline Total Aggregate(Database& db, const Database::Goal& g, long long from, long long to, long long now) {
+    Total result;
+    if (to <= from) return result;
 
     const std::string from_utc = ToUtcString(from);
     const std::string to_utc = ToUtcString(to);
@@ -42,7 +48,7 @@ inline long long Seconds(Database& db, const Database::Goal& g, long long from, 
     } else if (g.todo_id != -1) {
         total = db.GetTotalTimeByTodo(g.todo_id, from_utc, to_utc);
     } else {
-        return 0;
+        return result;
     }
 
     // 記録中の record は time_end が空なので、上の集計に含まれない
@@ -52,11 +58,17 @@ inline long long Seconds(Database& db, const Database::Goal& g, long long from, 
             : r.todo_id == g.todo_id;
         if (!match) continue;
 
+        result.recording = true;
         const long long s = std::max(r.time_begin, from);
         const long long e = std::min(now, to);
         if (e > s) total += e - s;
     }
-    return total;
+    result.seconds = total;
+    return result;
+}
+
+inline long long Seconds(Database& db, const Database::Goal& g, long long from, long long to, long long now) {
+    return Aggregate(db, g, from, to, now).seconds;
 }
 
 } // namespace GoalAchieved

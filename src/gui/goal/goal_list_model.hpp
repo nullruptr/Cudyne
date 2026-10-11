@@ -25,6 +25,13 @@ struct GoalRow {
     int goal_id = -1;
     GoalEval::State state = GoalEval::State::Comfortable;
     wxString cells[Col_Count];
+
+    // タイマーで DB に問い合わせず再計算するための、読み込み時点の値
+    GoalEval::GoalSpec spec;
+    long long achieved_base = 0;   // 読み込み時点の実績(秒)
+    long long base_now = 0;        // 読み込み時点の時刻
+    bool recording = false;        // 記録中なら、実績は時間とともに増える
+    long long window_end = GoalEval::kNone;
 };
 
 class GoalListModel : public wxDataViewVirtualListModel {
@@ -35,6 +42,21 @@ public:
     void SetRows(std::vector<GoalRow> rows) {
         m_rows = std::move(rows);
         Reset(static_cast<unsigned>(m_rows.size()));
+    }
+
+    // 表示中の行と、goal_id の並びが同じか
+    bool HasSameIds(const std::vector<GoalRow>& rows) const {
+        if (rows.size() != m_rows.size()) return false;
+        for (size_t i = 0; i < rows.size(); ++i) {
+            if (rows[i].goal_id != m_rows[i].goal_id) return false;
+        }
+        return true;
+    }
+
+    // 行の並びが同じときの更新。Reset しないので、選択やスクロールが保たれる
+    void UpdateRows(std::vector<GoalRow> rows) {
+        m_rows = std::move(rows);
+        for (size_t i = 0; i < m_rows.size(); ++i) RowChanged(static_cast<unsigned>(i));
     }
 
     // row 行目の goal_id (範囲外は -1)

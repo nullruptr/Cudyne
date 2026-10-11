@@ -39,13 +39,35 @@ bool MatchesCondition(int condition, GoalEval::State s) {
     }
 }
 
+// DB から読み直す間隔(秒)。記録の開始・終了など、タイマーの再計算では分からない変化を拾う
+constexpr int kReloadIntervalSec = 30;
+
+// 読み込み時点の値から、now 時点の状態と表示を再計算する (DB には問い合わせない)
+void RecomputeRow(GoalRow& row, long long now) {
+    // 記録中なら、読み込み後に経過した時間ぶん、実績が増えているものとする
+    long long achieved = row.achieved_base;
+    if (row.recording) {
+        const long long upto = row.window_end == GoalEval::kNone ? now : std::min(now, row.window_end);
+        if (upto > row.base_now) achieved += upto - row.base_now;
+    }
+
+    const GoalEval::Result res = GoalEval::Evaluate(row.spec, now, now, achieved);
+
+    row.state = res.state;
+    row.cells[Col_Status]    = GoalStateText(res.state);
+    row.cells[Col_Achieved]  = TimeUtils::FormatSeconds(res.achieved);
+    row.cells[Col_Remaining] = TimeUtils::FormatSeconds(res.remaining);
+    row.cells[Col_Slack]     = res.has_slack ? GoalDurationText(res.slack) : wxString("-");
+}
+
 } // namespace
 
 
 Goal::Goal(wxWindow* parent, Database &dbRef)
 	: wxFrame(parent, wxID_ANY, wxT("Goal"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT)
-    , m_db(dbRef) {
-    
+    , m_db(dbRef)
+    , m_timer(this) {
+
     // ウィンドウが初期化された後に FromDIP しないとクラッシュする
     SetSize(FromDIP(wxSize(1550, 600)));
 
@@ -181,6 +203,9 @@ Goal::Goal(wxWindow* parent, Database &dbRef)
     m_ctrl->Bind(wxEVT_DATAVIEW_SELECTION_CHANGED, [this](wxDataViewEvent&) { UpdateEditButton(); });
 
     Reload();
+
+    Bind(wxEVT_TIMER, &Goal::OnTimer, this);
+    m_timer.Start(1000); // 1 秒ごとに残り時間を再計算する
 }
 
 // 新規作成。保存されたら読み直す
@@ -215,20 +240,18 @@ void Goal::Reload() {
         row.goal_id = g.goal_id;
 
         // 今の窓の実績を集計して評価する (窓の終点が今より先なら、今まで)
-        const GoalEval::GoalSpec spec = ToSpec(g);
-        const GoalEval::Window win = GoalEval::GetWindow(spec, now);
-        long long achieved = 0;
+        row.spec = ToSpec(g);
+        const GoalEval::Window win = GoalEval::GetWindow(row.spec, now);
+        GoalAchieved::Total total;
         if (win.valid) {
             const long long to = win.end == GoalEval::kNone ? now : std::min(now, win.end);
-            achieved = GoalAchieved::Seconds(m_db, g, win.start, to, now);
+            total = GoalAchieved::Aggregate(m_db, g, win.start, to, now);
         }
-        const GoalEval::Result res = GoalEval::Evaluate(spec, now, now, achieved);
-
-        row.state = res.state;
-        row.cells[Col_Status]    = GoalStateText(res.state);
-        row.cells[Col_Achieved]  = TimeUtils::FormatSeconds(res.achieved);
-        row.cells[Col_Remaining] = TimeUtils::FormatSeconds(res.remaining);
-        row.cells[Col_Slack]     = res.has_slack ? GoalDurationText(res.slack) : wxString("-");
+        row.achieved_base = total.seconds;
+        row.recording = total.recording;
+        row.base_now = now;
+        row.window_end = win.end;
+        RecomputeRow(row, now);
 
         row.cells[Col_Name]   = wxString::FromUTF8(g.goal_name);
 
@@ -250,6 +273,7 @@ void Goal::Reload() {
     }
 
     m_all_rows = std::move(rows);
+    m_ticks_since_reload = 0;
     ApplyFilter();
 }
 
@@ -261,6 +285,33 @@ void Goal::ApplyFilter() {
     for (const GoalRow& row : m_all_rows) {
         if (MatchesCondition(condition, row.state)) shown.push_back(row);
     }
-    m_model->SetRows(std::move(shown));
-    UpdateEditButton(); // 行を入れ替えると選択は外れる
+
+    if (m_model->HasSameIds(shown)) {
+        m_model->UpdateRows(std::move(shown)); // 並びが同じなら、選択を保ったまま値だけ更新
+    } else {
+        m_model->SetRows(std::move(shown));
+    }
+    UpdateEditButton();
+}
+
+// 1 秒ごと。DB には問い合わせず、読み込み時点の値から残り時間などを再計算する
+void Goal::OnTimer(wxTimerEvent& WXUNUSED(event)) {
+    const long long now = static_cast<long long>(std::time(nullptr));
+
+    // 窓が終わった (日付が変わった等) 行がある、または一定時間ごとに、DB から読み直す
+    ++m_ticks_since_reload;
+    bool window_ended = false;
+    for (const GoalRow& row : m_all_rows) {
+        if (row.window_end != GoalEval::kNone && row.window_end > row.base_now && now >= row.window_end) {
+            window_ended = true;
+            break;
+        }
+    }
+    if (window_ended || m_ticks_since_reload >= kReloadIntervalSec) {
+        Reload();
+        return;
+    }
+
+    for (GoalRow& row : m_all_rows) RecomputeRow(row, now);
+    ApplyFilter();
 }
