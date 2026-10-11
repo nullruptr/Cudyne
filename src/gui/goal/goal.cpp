@@ -51,7 +51,7 @@ Goal::Goal(wxWindow* parent, Database &dbRef)
     , m_timer(this) {
 
     // ウィンドウが初期化された後に FromDIP しないとクラッシュする
-    SetSize(FromDIP(wxSize(1550, 600)));
+    SetSize(FromDIP(wxSize(800, 600)));
 
     wxPanel* main_panel = new wxPanel(this, wxID_ANY);
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
