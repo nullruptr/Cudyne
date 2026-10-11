@@ -44,7 +44,7 @@ ToDo::ToDo(wxWindow* parent, Database &dbRef)
 	m_choiceCondition->Append(_("All"));
     m_choiceCondition->Append(_("Pending"));
 	m_choiceCondition->Append(_("Done"));
-	m_choiceCondition->SetSelection(0); // 初期表示は All
+	m_choiceCondition->SetSelection(1); // 初期表示は Pending
 
     wxStaticText* st_filter_date = new wxStaticText(main_panel, wxID_ANY, _("Show From: "));
     // wxDP_DROPDOWN でカレンダーから日付を選べるようにする。デフォルトは今日
