@@ -1,8 +1,6 @@
 #pragma once
 #include <wx/event.h>
 #include <wx/wx.h>
-#include <wx/datectrl.h>
-#include <wx/dateevt.h>
 #include <wx/dataview.h>
 #include <wx/object.h>
 #include <wx/timer.h>
@@ -16,9 +14,9 @@ public:
 private:
 	Database &m_db;
 	wxChoice* m_choiceCondition;
-	wxDatePickerCtrl* m_dp_filter_date; // この日付以降の締切のものを表示する(超過分は常に表示)
 	wxButton* m_btn_add;
 	wxButton* m_btn_edit;
+	wxButton* m_btn_delete;
 	wxButton* m_btn_refresh; // 押したときに、DB から読み直す
 	wxTimer m_timer;         // 1 秒ごとに、残り時間などを再計算する(DB には問い合わせない)
 
@@ -34,5 +32,6 @@ private:
 	void FitColumns();                           // 列幅を内容に合わせて再計算する
 	void AddGoal();            // 新規作成ダイアログを開く
 	void EditSelectedGoal();   // 選択中の goal の編集ダイアログを開く
-	void UpdateEditButton();   // 行が選択されているときだけ Edit を有効にする
+	void DeleteSelectedGoal(); // 選択中の goal を、確認のうえ削除する
+	void UpdateEditButton();   // 行が選択されているときだけ Edit / Delete を有効にする
 };

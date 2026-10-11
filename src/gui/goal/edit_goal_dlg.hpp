@@ -31,6 +31,7 @@ private:
     wxDatePickerCtrl* m_dp_start;
     wxTextCtrl* m_tc_start_hhmm;
     wxTextCtrl* m_tc_start_ss;
+    wxStaticText* m_st_start_note;   // 集計は期間の先頭から行われる、という注意書き
 
     wxCheckBox* m_cb_end;            // ON のとき終了日時を設定する (OFF = 期限なし)
     wxDatePickerCtrl* m_dp_end;
@@ -54,7 +55,8 @@ private:
     void OnValidateHHMM(wxTextCtrl* tc);
     void OnValidateSS(wxTextCtrl* tc);
     void UpdateSelectedName();      // 選択中の Category / ToDo 名を更新
-    void UpdateEndControls();       // End Time のチェックに応じて入力欄を有効化
+    void UpdateStartNote();         // Start Time の注意書きを更新
+    void UpdateEndControls();      // End Time のチェックに応じて入力欄を有効化
     void UpdatePeriodControls();   // Every n Days のときだけ n を有効化
     void UpdateTargetLimit();       // 最大稼働時間の表示を更新
     void UpdateTargetWarning();     // 上限超過の警告 (赤字) を更新

@@ -1,4 +1,5 @@
 #include "edit_goal_dlg.hpp"
+#include "core/goal/goal_eval.hpp"
 #include "core/utils/format_time.hpp"
 #include "gui/common/sel_category_dlg/sel_category_dlg.hpp"
 #include "gui/common/sel_todo_dlg/sel_todo_dlg.hpp"
@@ -120,6 +121,12 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int
     start_sizer->Add(btn_now, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, gap);
     grid->Add(new wxStaticText(this, wxID_ANY, _("Start Time")), labelFlags);
     grid->Add(start_sizer, labelFlags);
+
+    // 暦に揃える期間では、Start Time より前の期間の先頭から集計される (周期未定義では表示しない)
+    m_st_start_note = new wxStaticText(this, wxID_ANY, "");
+    m_st_start_note->SetForegroundColour(wxColour(180, 90, 0));
+    grid->AddSpacer(0);
+    grid->Add(m_st_start_note, labelFlags);
 
     // End Time (任意。チェックを外すと期限なし)
     m_cb_end        = new wxCheckBox(this, wxID_ANY, _("End Time"));
@@ -453,7 +460,33 @@ long long EditGoalDlg::GetPeriodSeconds() const {
     }
 }
 
+// 集計の始点が Start Time と違う場合だけ、注意書きを表示する
+void EditGoalDlg::UpdateStartNote() {
+    wxString note;
+    const int type = m_ch_period_type->GetSelection();
+
+    if (type != PERIOD_UNDEFINED &&
+        !m_tc_start_hhmm->GetValue().IsEmpty() && !m_tc_start_ss->GetValue().IsEmpty()) {
+        GoalEval::GoalSpec spec;
+        spec.period_type = static_cast<GoalEval::PeriodType>(type);
+        spec.period_n = m_sc_every_n->GetValue();
+        spec.start_epoch = TimeUtils::ParseUTCStringToEpoch(TimeUtils::BuildUTCString(
+            m_dp_start->GetValue(), m_tc_start_hhmm->GetValue(), m_tc_start_ss->GetValue()));
+
+        const GoalEval::Window w = GoalEval::GetWindow(spec, spec.start_epoch);
+        if (w.valid && w.start != spec.start_epoch) {
+            note = wxString::Format(
+                _("Aggregation starts from %s (the beginning of the period), regardless of the Start Time."),
+                TimeUtils::FormatEpochToDate(w.start));
+        }
+    }
+
+    m_st_start_note->SetLabel(note);
+    Layout();
+}
+
 void EditGoalDlg::UpdateTargetLimit() {
+    UpdateStartNote(); // Start Time や期間が変わるたびに呼ばれるので、ここで一緒に更新する
     // 最大稼働時間 (期間の長さ) を、選択中の単位で表示する
     double divisor = 1;
     switch (m_ch_target_unit->GetSelection()) {

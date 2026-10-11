@@ -8,7 +8,10 @@
 #include "detail.hpp"
 #include "core/utils/format_time.hpp"
 #include "core/utils/utils.hpp"
+#include "core/goal/goal_status.hpp"
 #include "gui/goal/goal_list_dlg.hpp"
+#include <ctime>
+#include <vector>
 
 Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	: wxFrame(parent, wxID_ANY, wxT("Detail"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT)
@@ -35,16 +38,14 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	m_result_total_time_selected = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
 	wxStaticText* stat_last_executed = new wxStaticText(pnlDetail, wxID_ANY, _("Last Executed:"));
 	m_last_executed = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
-	wxStaticText* stat_period_time = new wxStaticText(pnlDetail, wxID_ANY, _("Period Type"));
-	m_period_type = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
-	wxStaticText* stat_goal = new wxStaticText(pnlDetail, wxID_ANY, _("Goal"));
-	m_goal = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
-	wxStaticText* stat_remaining = new wxStaticText(pnlDetail, wxID_ANY, _("Remaining"));
-	m_remaining = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
-	wxStaticText* stat_deadline = new wxStaticText(pnlDetail, wxID_ANY, _("Deadline"));
-	m_deadline = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
-	wxStaticText* stat_time_to_deadline = new wxStaticText(pnlDetail, wxID_ANY, _("Time to Deadline"));
-	m_time_to_deadline = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
+	wxStaticText* stat_goal_total = new wxStaticText(pnlDetail, wxID_ANY, _("Goals"));
+	m_goal_total = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
+	wxStaticText* stat_goal_achieved = new wxStaticText(pnlDetail, wxID_ANY, _("Goals Achieved"));
+	m_goal_achieved = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
+	wxStaticText* stat_goal_unachieved = new wxStaticText(pnlDetail, wxID_ANY, _("Goals Unachieved"));
+	m_goal_unachieved = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
+	wxStaticText* stat_goal_invalid = new wxStaticText(pnlDetail, wxID_ANY, _("Goals Invalid"));
+	m_goal_invalid = new wxStaticText(pnlDetail, wxID_ANY, wxEmptyString);
 
 	// ラベルと値をペアで登録
 	const wxSizerFlags labelFlags = wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL);
@@ -55,16 +56,14 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	flex->Add(m_result_total_time_selected, valueFlags);
 	flex->Add(stat_last_executed, labelFlags);
 	flex->Add(m_last_executed, valueFlags);
-	flex->Add(stat_period_time, labelFlags);
-	flex->Add(m_period_type, valueFlags);
-	flex->Add(stat_goal, labelFlags);
-	flex->Add(m_goal, valueFlags);
-	flex->Add(stat_remaining, labelFlags);
-	flex->Add(m_remaining, valueFlags);
-	flex->Add(stat_deadline, labelFlags);
-	flex->Add(m_deadline, valueFlags);
-	flex->Add(stat_time_to_deadline, labelFlags);
-	flex->Add(m_time_to_deadline, valueFlags);
+	flex->Add(stat_goal_total, labelFlags);
+	flex->Add(m_goal_total, valueFlags);
+	flex->Add(stat_goal_achieved, labelFlags);
+	flex->Add(m_goal_achieved, valueFlags);
+	flex->Add(stat_goal_unachieved, labelFlags);
+	flex->Add(m_goal_unachieved, valueFlags);
+	flex->Add(stat_goal_invalid, labelFlags);
+	flex->Add(m_goal_invalid, valueFlags);
 
 	rightBoxSizer->Add(flex, 0, wxEXPAND | wxALL, FromDIP(10));
 
@@ -75,6 +74,10 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 		// 同じ対象に複数の goal を持てるので、一覧から選んで編集・新規作成する
 		GoalListDlg dlg(this, m_db, m_id);
 		dlg.ShowModal();
+
+		// goal の追加・編集・削除を要約に反映する
+		wxCommandEvent evt;
+		OnSetTextOfDetail(evt);
 	});
 
 	wxBoxSizer* btnSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -125,4 +128,21 @@ void Detail::OnSetTextOfDetail(wxCommandEvent &event) {
 	m_result_total_time_incl_subitems->SetLabel(TimeUtils::FormatSeconds(total_sec_incl_subitems));
 	m_result_total_time_selected->SetLabel(TimeUtils::FormatSeconds(total_sec_all));
 	m_last_executed->SetLabel(TimeUtils::FormatEpochToDate(last_executed));
+
+	// Goal の要約。この Category に設定された goal を、今の時点で評価して件数を数える
+	const long long now = static_cast<long long>(std::time(nullptr));
+	int achieved = 0, unachieved = 0, invalid = 0;
+	const std::vector<Database::Goal> goals = m_db.GetGoalsByTarget(m_id, -1);
+	for (const Database::Goal& g : goals) {
+		const GoalEval::State state = GoalStatus::EvaluateNow(m_db, g, now).result.state;
+		switch (GoalStatus::GroupOf(state)) {
+		case GoalStatus::Group::Achieved:   ++achieved;   break;
+		case GoalStatus::Group::Unachieved: ++unachieved; break;
+		case GoalStatus::Group::Invalid:    ++invalid;    break;
+		}
+	}
+	m_goal_total->SetLabel(wxString::Format("%d", (int)goals.size()));
+	m_goal_achieved->SetLabel(wxString::Format("%d", achieved));
+	m_goal_unachieved->SetLabel(wxString::Format("%d", unachieved));
+	m_goal_invalid->SetLabel(wxString::Format("%d", invalid));
 }

@@ -2,40 +2,22 @@
 #include "goal.hpp"
 #include "goal_text.hpp"
 #include "edit_goal_dlg.hpp"
-#include "core/goal/goal_achieved.hpp"
 #include "core/goal/goal_eval.hpp"
+#include "core/goal/goal_status.hpp"
 #include "core/utils/format_time.hpp"
 #include <algorithm>
 #include <ctime>
 
 namespace {
 
-// DB の goal を評価用の GoalSpec に変換する (時刻は UTC 文字列から epoch 秒へ)
-GoalEval::GoalSpec ToSpec(const Database::Goal& g) {
-    GoalEval::GoalSpec spec;
-    spec.period_type = (g.period_type >= 0 && g.period_type <= 4)
-        ? static_cast<GoalEval::PeriodType>(g.period_type)
-        : GoalEval::PeriodType::Daily;
-    spec.period_n = g.period_n > 0 ? g.period_n : 1;
-    spec.target_seconds = g.target_time;
-    spec.start_epoch = TimeUtils::ParseUTCStringToEpoch(g.start_time);
-    spec.end_epoch = g.end_time.empty() ? GoalEval::kNone : TimeUtils::ParseUTCStringToEpoch(g.end_time);
-    spec.is_active = g.is_active == 1;
-    return spec;
-}
-
 // Condition (All / Achieved / Unachieved / Invalid) に状態が当てはまるか
 bool MatchesCondition(int condition, GoalEval::State s) {
-    using GoalEval::State;
+    using GoalStatus::Group;
     switch (condition) {
-    case 1: // Achieved
-        return s == State::Achieved || s == State::EndedAchieved;
-    case 2: // Unachieved
-        return s == State::Comfortable || s == State::Urgent || s == State::Missed || s == State::EndedMissed;
-    case 3: // Invalid
-        return s == State::NotStarted || s == State::Disabled;
-    default: // All
-        return true;
+    case 1: return GoalStatus::GroupOf(s) == Group::Achieved;
+    case 2: return GoalStatus::GroupOf(s) == Group::Unachieved;
+    case 3: return GoalStatus::GroupOf(s) == Group::Invalid;
+    default: return true; // All
     }
 }
 
@@ -84,21 +66,16 @@ Goal::Goal(wxWindow* parent, Database &dbRef)
 	m_choiceCondition->Append(_("Invalid"));
 	m_choiceCondition->SetSelection(2); // 初期表示は Unachieved
 
-    wxStaticText* st_filter_date = new wxStaticText(main_panel, wxID_ANY, _("Show From: "));
-    // wxDP_DROPDOWN でカレンダーから日付を選べるようにする。デフォルトは今日
-    m_dp_filter_date = new wxDatePickerCtrl(main_panel, wxID_ANY, wxDateTime::Today(),
-        wxDefaultPosition, wxDefaultSize, wxDP_DROPDOWN | wxDP_SHOWCENTURY);
-
     m_btn_add = new wxButton(main_panel, wxID_ANY, _("Add"));
     m_btn_edit = new wxButton(main_panel, wxID_ANY, _("Edit"));
+    m_btn_delete = new wxButton(main_panel, wxID_ANY, _("Delete"));
     m_btn_refresh = new wxButton(main_panel, wxID_ANY, _("Refresh"));
 
     ctrl_sizer->Add(st_choiceCondition, 0, wxALIGN_CENTER_VERTICAL);
 	ctrl_sizer->Add(m_choiceCondition, 0, wxALIGN_CENTER_VERTICAL);
-    ctrl_sizer->Add(st_filter_date, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
-    ctrl_sizer->Add(m_dp_filter_date, 0, wxALIGN_CENTER_VERTICAL);
-    ctrl_sizer->Add(m_btn_add, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
+    ctrl_sizer->Add(m_btn_add, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(20));
     ctrl_sizer->Add(m_btn_edit, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
+    ctrl_sizer->Add(m_btn_delete, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
     ctrl_sizer->Add(m_btn_refresh, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
 
     sizer->Add(ctrl_sizer, 0, wxEXPAND | wxALL, FromDIP(10));
@@ -199,10 +176,12 @@ Goal::Goal(wxWindow* parent, Database &dbRef)
 
     m_btn_add->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { AddGoal(); });
     m_btn_edit->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { EditSelectedGoal(); });
+    m_btn_delete->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { DeleteSelectedGoal(); });
     m_ctrl->Bind(wxEVT_DATAVIEW_ITEM_ACTIVATED, [this](wxDataViewEvent&) { EditSelectedGoal(); }); // ダブルクリック
     m_ctrl->Bind(wxEVT_DATAVIEW_SELECTION_CHANGED, [this](wxDataViewEvent&) { UpdateEditButton(); });
 
     Reload();
+    FitColumns(); // 行を読み込んだあとの内容に合わせる
 
     Bind(wxEVT_TIMER, &Goal::OnTimer, this);
     m_timer.Start(1000); // 1 秒ごとに残り時間を再計算する
@@ -242,8 +221,29 @@ void Goal::EditSelectedGoal() {
     if (dlg.ShowModal() == wxID_OK) Reload();
 }
 
+// 選択中の goal を、確認のうえ削除する
+void Goal::DeleteSelectedGoal() {
+    const wxDataViewItem item = m_ctrl->GetSelection();
+    if (!item.IsOk()) return;
+
+    const int goal_id = m_model->GetGoalId(m_model->GetRow(item));
+    if (goal_id == -1) return;
+
+    if (wxMessageBox(_("Delete the selected goal?"), _("Confirm"),
+                     wxYES_NO | wxNO_DEFAULT | wxICON_QUESTION, this) != wxYES) {
+        return;
+    }
+    if (!m_db.DeleteGoal(goal_id)) {
+        wxMessageBox(_("Failed to delete"), "Error", wxOK | wxICON_ERROR, this);
+        return;
+    }
+    Reload();
+}
+
 void Goal::UpdateEditButton() {
-    m_btn_edit->Enable(m_ctrl->GetSelection().IsOk());
+    const bool selected = m_ctrl->GetSelection().IsOk();
+    m_btn_edit->Enable(selected);
+    m_btn_delete->Enable(selected);
 }
 
 // DB から全 goal を読み直して評価し、一覧を更新する
@@ -256,17 +256,12 @@ void Goal::Reload() {
         row.goal_id = g.goal_id;
 
         // 今の窓の実績を集計して評価する (窓の終点が今より先なら、今まで)
-        row.spec = ToSpec(g);
-        const GoalEval::Window win = GoalEval::GetWindow(row.spec, now);
-        GoalAchieved::Total total;
-        if (win.valid) {
-            const long long to = win.end == GoalEval::kNone ? now : std::min(now, win.end);
-            total = GoalAchieved::Aggregate(m_db, g, win.start, to, now);
-        }
-        row.achieved_base = total.seconds;
-        row.recording = total.recording;
+        const GoalStatus::Evaluated ev = GoalStatus::EvaluateNow(m_db, g, now);
+        row.spec = ev.spec;
+        row.achieved_base = ev.total.seconds;
+        row.recording = ev.total.recording;
         row.base_now = now;
-        row.window_end = win.end;
+        row.window_end = ev.window.end;
         RecomputeRow(row, now);
 
         row.cells[Col_Name]   = wxString::FromUTF8(g.goal_name);
