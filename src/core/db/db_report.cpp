@@ -55,6 +55,21 @@ std::vector<Database::Record> Database::GetRecordList(
 	) {
     std::vector<Record> results;
     try {
+        // category_id が指定されたら、そのカテゴリ以下 (自分自身と、配下の項目) の record に絞る
+        std::string category_filter;
+        if (category_id != -1) {
+            std::vector<int> ids{category_id};
+            std::vector<int> children;
+            if (GetChildCategories(children, category_id)) ids.insert(ids.end(), children.begin(), children.end());
+
+            category_filter = " AND r.category_id IN (";
+            for (size_t i = 0; i < ids.size(); ++i) {
+                if (i > 0) category_filter += ",";
+                category_filter += std::to_string(ids[i]); // int のみ連結するので SQL インジェクションの恐れはない
+            }
+            category_filter += ")";
+        }
+
         std::string query =
             "SELECT r.id, r.category_id, c.name, "
             "  strftime('%s', r.time_begin), "
@@ -64,8 +79,8 @@ std::vector<Database::Record> Database::GetRecordList(
             "FROM records r "
             "JOIN categories c ON r.category_id = c.id "
             "LEFT JOIN todo t ON r.todo_id = t.id "
-            "WHERE r.time_end != '' AND r.time_end > :start AND r.time_begin < :end "
-            "ORDER BY r.time_begin ASC";
+            "WHERE r.time_end != '' AND r.time_end > :start AND r.time_begin < :end " + category_filter +
+            " ORDER BY r.time_begin ASC";
 
         soci::rowset<soci::row> rs = (sql.prepare << query,
             soci::use(start_utc, "start"),

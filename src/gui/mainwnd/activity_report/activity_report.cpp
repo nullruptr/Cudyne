@@ -3,6 +3,8 @@
 #include <wx/listbase.h>
 #include <wx/wx.h>
 #include <wx/dateevt.h>
+#include <algorithm>
+#include <vector>
 
 ActivityReport::ActivityReport(wxWindow* parent, Database& dbRef)
     : wxPanel(parent, wxID_ANY)
@@ -40,6 +42,16 @@ void ActivityReport::LoadReport() {
 
 	std::vector<Database::RecordSummary> summaries = m_db.GetRecordsByRange(s_utc, e_utc);
 
+	// カテゴリが指定されていたら、そのカテゴリ以下(自分自身と配下の項目)の集計だけを残す
+	if (m_category_id != -1) {
+		std::vector<int> ids{m_category_id};
+		std::vector<int> children;
+		if (m_db.GetChildCategories(children, m_category_id)) ids.insert(ids.end(), children.begin(), children.end());
+		summaries.erase(std::remove_if(summaries.begin(), summaries.end(), [&](const Database::RecordSummary& rs) {
+			return std::find(ids.begin(), ids.end(), rs.category_id) == ids.end();
+		}), summaries.end());
+	}
+
 	// ず最初に秒数を計算
 	long long total_seconds = 0;
 	for (const auto& rs : summaries) {
@@ -72,6 +84,10 @@ void ActivityReport::LoadReport() {
 	}
 
 	m_total_label->SetLabel(_("Total: ") + TimeUtils::FormatSeconds(total_seconds));
+}
+
+void ActivityReport::SetCategoryId(int category_id) {
+	m_category_id = category_id;
 }
 
 void ActivityReport::SetPeriodAndRefresh(const wxDateTime& start, const wxDateTime& end) {

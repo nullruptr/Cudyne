@@ -264,3 +264,23 @@ Goal について表記しているが、複数制約持てる方式にしたの
 | Invalid | 開始前、無効 |
 
 - 「Setup Goal」から開いた一覧ダイアログを閉じたときに、件数を更新する。
+
+## Detail の Notebook
+
+Detail の Notebook の上に「Filter by period」(From ~ To、カレンダーから選択)を置き、Record タブと Goal タブの表示期間を切り替える。
+チェックなしは、Record タブが全期間、Goal タブが今の窓だけ。チェックありは、From の 0 時から To の翌日 0 時までと重なるものを表示する。
+タブの順は Activity Report / Record / ToDo / Goal / Plan。Plan は未実装。
+
+- Activity Report タブ: この Category 以下の集計(カテゴリ別の合計時間と割合)。期間は Record タブと同じ。
+- ToDo タブ: この Category 以下の ToDo を一覧で表示する。ToDo ウィンドウと同じ部品(`ToDoPanel`)で、
+  Condition の切り替え、列クリックのソート、カウントダウン、右クリックの記録開始、編集、Add(この Category を初期選択にして新規作成)が使える。
+  期間を絞るときは、ToDo の日付(開始・目標終了・締切・完了)の最も早いものから最も遅いものまでの範囲が、期間と重なるものを表示する。
+  日付がひとつもない ToDo は、絞り込み中は表示しない。
+
+- Record タブ: Record Viewer を、この Category 以下(自分自身と、配下の項目)の record に絞って表示する。
+  絞り込みは `GetRecordList` の `category_id` 引数で行う。
+- Goal タブ: この Category に設定された goal の窓を、古い順に 1 窓 1 行で表示する(実装: `goal_report.hpp`)。
+  - 列は Goal / Window / Target / Achieved / Status。例外設定のある窓は Target に `30:00:00 (60:00:00)` のように通常の目標を添える。
+  - 終わった窓は、実績が目標以上なら「達成」、そうでなければ「未達確定」。始まっていない窓は「Upcoming」。
+  - Rolling は、達成済みのサイクル(達成時刻まで)と、現在のサイクルを表示する。
+  - 窓は、1 つの goal につき最大 400 件。超えたときは、先頭から 400 件を表示する旨を出す。

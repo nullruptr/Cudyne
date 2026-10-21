@@ -10,5 +10,9 @@ RecordViewer::RecordViewer(wxWindow* parent, Database& dbRef)
 }
 
 void RecordViewer::SetPeriodAndRefresh(const wxDateTime& start, const wxDateTime& end) {
-    m_panel->LoadRecords(start, end);
+    m_panel->LoadRecords(start, end, m_category_id);
+}
+
+void RecordViewer::SetCategoryId(int category_id) {
+    m_category_id = category_id;
 }

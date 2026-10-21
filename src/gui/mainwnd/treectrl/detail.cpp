@@ -10,6 +10,12 @@
 #include "core/utils/utils.hpp"
 #include "core/goal/goal_status.hpp"
 #include "gui/goal/goal_list_dlg.hpp"
+#include "gui/goal/goal_tab.hpp"
+#include "gui/mainwnd/activity_report/activity_report.hpp"
+#include "gui/todo/todo_panel.hpp"
+#include "gui/mainwnd/mainwnd.hpp"
+#include "gui/mainwnd/record_viewer/record_viewer.hpp"
+#include <wx/dateevt.h>
 #include <ctime>
 #include <vector>
 
@@ -78,6 +84,7 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 		// goal の追加・編集・削除を要約に反映する
 		wxCommandEvent evt;
 		OnSetTextOfDetail(evt);
+		RefreshTabs(); // Goal タブにも反映する
 	});
 
 	wxBoxSizer* btnSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -85,12 +92,60 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
 	btnSizer->Add(btn_setup_plan, 0);
 	rightBoxSizer->Add(btnSizer, 0, wxALL, FromDIP(10));
 
+	// Notebook に表示する期間 (チェックを外すと全期間)
+	const long date_picker_style = wxDP_DROPDOWN | wxDP_SHOWCENTURY; // カレンダーから選べる
+	m_cb_filter = new wxCheckBox(pnlDetail, wxID_ANY, _("Filter by period"));
+	wxDateTime first_day = wxDateTime::Today();
+	first_day.SetDay(1);
+	wxDateTime last_day = first_day;
+	last_day.SetToLastMonthDay();
+	m_dp_from = new wxDatePickerCtrl(pnlDetail, wxID_ANY, first_day, wxDefaultPosition, wxDefaultSize, date_picker_style);
+	m_dp_to   = new wxDatePickerCtrl(pnlDetail, wxID_ANY, last_day, wxDefaultPosition, wxDefaultSize, date_picker_style);
+	m_dp_from->Enable(false);
+	m_dp_to->Enable(false);
+	wxBoxSizer* filterSizer = new wxBoxSizer(wxHORIZONTAL);
+	filterSizer->Add(m_cb_filter, 0, wxALIGN_CENTER_VERTICAL);
+	filterSizer->Add(m_dp_from, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(5));
+	filterSizer->Add(new wxStaticText(pnlDetail, wxID_ANY, wxT("~")), 0, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, FromDIP(5));
+	filterSizer->Add(m_dp_to, 0, wxALIGN_CENTER_VERTICAL);
+	rightBoxSizer->Add(filterSizer, 0, wxLEFT | wxRIGHT, FromDIP(10));
+
 	wxNotebook* notebook = new wxNotebook(pnlDetail, wxID_ANY);
-	notebook->AddPage(new wxPanel(notebook, wxID_ANY), _("Activity Report"));
-	notebook->AddPage(new wxPanel(notebook, wxID_ANY), _("Record"));
-	notebook->AddPage(new wxPanel(notebook, wxID_ANY), _("ToDo"));
+	m_activity_report = new ActivityReport(notebook, m_db);
+	m_activity_report->SetCategoryId(m_id); // この Category 以下の集計に絞る
+	notebook->AddPage(m_activity_report, _("Activity Report"));
+	m_record_viewer = new RecordViewer(notebook, m_db);
+	m_record_viewer->SetCategoryId(m_id); // この Category 以下の record に絞る
+	notebook->AddPage(m_record_viewer, _("Record"));
+	// 期間は Detail の「Filter by period」で決める。「Start Recording」は、メインウィンドウ側へ送る
+	m_todo_panel = new ToDoPanel(notebook, m_db, m_id, true, GetParent());
+	notebook->AddPage(m_todo_panel, _("ToDo"));
+	m_goal_tab = new GoalTab(notebook, m_db, m_id);
+	notebook->AddPage(m_goal_tab, _("Goal"));
 	notebook->AddPage(new wxPanel(notebook, wxID_ANY), _("Plan"));
 	rightBoxSizer->Add(notebook, 1, wxEXPAND | wxALL, FromDIP(10));
+
+	m_cb_filter->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent&) {
+		m_dp_from->Enable(m_cb_filter->GetValue());
+		m_dp_to->Enable(m_cb_filter->GetValue());
+		RefreshTabs();
+	});
+	// From > To にならないよう、動かした側に合わせてもう一方を寄せる
+	m_dp_from->Bind(wxEVT_DATE_CHANGED, [this](wxDateEvent&) {
+		if (m_dp_from->GetValue() > m_dp_to->GetValue()) m_dp_to->SetValue(m_dp_from->GetValue());
+		RefreshTabs();
+	});
+	m_dp_to->Bind(wxEVT_DATE_CHANGED, [this](wxDateEvent&) {
+		if (m_dp_to->GetValue() < m_dp_from->GetValue()) m_dp_from->SetValue(m_dp_to->GetValue());
+		RefreshTabs();
+	});
+
+	// Record タブで record を編集したら、Detail の表示も更新する
+	Bind(wxEVT_MENU, [this](wxCommandEvent&) {
+		wxCommandEvent evt;
+		OnSetTextOfDetail(evt);
+		RefreshTabs();
+	}, ID_UPDATE_STATISTIC);
 
 
     pnlDetail->SetSizer(rightBoxSizer);
@@ -103,7 +158,28 @@ Detail::Detail(wxWindow* parent, Database &dbRef, int id)
     wxCommandEvent evt;
     OnSetTitle(evt);
     OnSetTextOfDetail(evt);
+    RefreshTabs();
     pnlDetail->Refresh();
+}
+
+void Detail::RefreshTabs() {
+    const bool filtering = m_cb_filter->GetValue();
+
+    // Record タブ: 絞らないときは全期間。絞るときは [From の 0 時, To の翌日 0 時)
+    wxDateTime start(1, wxDateTime::Jan, 1970);
+    wxDateTime end(1, wxDateTime::Jan, 2100);
+    if (filtering) {
+        start = m_dp_from->GetValue();
+        start.ResetTime();
+        end = m_dp_to->GetValue();
+        end.ResetTime();
+        end.Add(wxDateSpan::Day());
+    }
+    m_activity_report->SetPeriodAndRefresh(start, end);
+    m_record_viewer->SetPeriodAndRefresh(start, end);
+    m_todo_panel->SetPeriod(filtering, m_dp_from->GetValue(), m_dp_to->GetValue());
+
+    m_goal_tab->Load(filtering, m_dp_from->GetValue(), m_dp_to->GetValue());
 }
 
 void Detail::OnSetTitle(wxCommandEvent &event) {

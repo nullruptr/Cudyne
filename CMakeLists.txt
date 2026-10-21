@@ -56,6 +56,7 @@ set(SOURCES
     src/gui/goal/edit_goal_dlg.cpp
     src/gui/goal/goal.cpp
     src/gui/goal/goal_override_dlg.cpp
+    src/gui/goal/goal_tab.cpp
     src/gui/goal/goal_list_dlg.cpp
     src/gui/mainwnd/statistic/statistic.cpp
     src/gui/mainwnd/treectrl/detail.cpp
@@ -70,6 +71,7 @@ set(SOURCES
     src/gui/time_log/time_log.cpp
     src/gui/todo/edit_todo_dlg.cpp
     src/gui/todo/todo.cpp
+    src/gui/todo/todo_panel.cpp
     src/main.cpp
     # resource.rc は Windows (MSVC) ビルドでのみ使用
     $<$<BOOL:${MSVC_BUILD}>:resource.rc>

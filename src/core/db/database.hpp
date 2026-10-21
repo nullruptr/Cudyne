@@ -127,7 +127,7 @@ public:
 	
     // --- db_report.cpp ---
     std::vector<Database::RecordSummary> GetRecordsByRange(const std::string& start_utc, const std::string& end_utc);
-    std::vector<Database::Record> GetRecordList(const std::string& start_utc, const std::string& end_utc, int category_id = -1);
+    std::vector<Database::Record> GetRecordList(const std::string& start_utc, const std::string& end_utc, int category_id = -1); // category_id != -1 のときは、そのカテゴリ以下に絞る
     
 	// --- db_record.cpp ---
 	long long StartRecord(int category_id, int todo_id = 0); // todo_id が 0 以下の場合は ToDo と紐付けない
