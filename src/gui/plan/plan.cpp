@@ -9,10 +9,11 @@
 #include <functional>
 #include <set>
 #include "plan.hpp"
+#include "plan_add_dlg.hpp"
 #include "plan_check_panel.hpp"
 #include "core/plan/plan_conflict.hpp"
+#include "gui/common/wheel_choice.hpp"
 #include "core/utils/format_time.hpp"
-#include "gui/common/datetime_dlg/datetime_dlg.hpp"
 #include "gui/common/sel_category_dlg/sel_category_dlg.hpp"
 
 namespace {
@@ -111,8 +112,7 @@ Plan::Plan(wxWindow* parent, Database &dbRef)
 
     // 複製。右側の設定は、元の予定から何(単位)ずらして複製するか。メモを複製するかも選べる
     wxButton* btn_duplicate = new wxButton(this, wxID_ANY, _("Duplicate"));
-    m_sc_shift = new wxSpinCtrl(this, wxID_ANY, "1", wxDefaultPosition, FromDIP(wxSize(75, -1)),
-                                wxSP_ARROW_KEYS, -9999, 9999, 1);
+    m_tc_shift = new wxTextCtrl(this, wxID_ANY, "1", wxDefaultPosition, FromDIP(wxSize(60, -1)));
     wxArrayString units;
     units.Add(_("minutes"));
     units.Add(_("hours"));
@@ -121,11 +121,12 @@ Plan::Plan(wxWindow* parent, Database &dbRef)
     units.Add(_("months"));
     m_ch_unit = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, units);
     m_ch_unit->SetSelection(UNIT_DAYS);
+    WheelChoice::Bind(m_ch_unit); // マウスホイールで、単位を切り替えられる
     m_cb_copy_memo = new wxCheckBox(this, wxID_ANY, _("Copy memo"));
     m_cb_copy_memo->SetValue(true);
     row_edit->Add(btn_duplicate, 0, wxALIGN_CENTER_VERTICAL);
     row_edit->Add(new wxStaticText(this, wxID_ANY, _("Shift by")), 0, wxALIGN_CENTER_VERTICAL | wxLEFT, gap);
-    row_edit->Add(m_sc_shift, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, gap);
+    row_edit->Add(m_tc_shift, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, gap);
     row_edit->Add(m_ch_unit, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, gap);
     row_edit->Add(m_cb_copy_memo, 0, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, FromDIP(10));
     row_edit->AddSpacer(FromDIP(15));
@@ -227,6 +228,12 @@ Plan::Plan(wxWindow* parent, Database &dbRef)
     m_grid->Bind(wxEVT_GRID_CELL_CHANGED, &Plan::OnCellChanged, this);
     m_grid->Bind(wxEVT_GRID_CELL_LEFT_DCLICK, &Plan::OnCellDoubleClick, this);
     m_grid->Bind(wxEVT_GRID_SELECT_CELL, &Plan::OnSelectCell, this);
+    // 行ラベルをクリックして行を選んだとき、キーボードのフォーカスを表に移す。
+    // 移さないと、直前に触った入力欄にフォーカスが残り、Ctrl+C / Ctrl+V や矢印キーがそちらに届いてしまう
+    m_grid->Bind(wxEVT_GRID_LABEL_LEFT_CLICK, [this](wxGridEvent& event) {
+        event.Skip();
+        CallAfter([this]() { m_grid->GetGridWindow()->SetFocus(); });
+    });
 
     // 日付はカレンダーで選ぶと、すぐ反映する。時刻と秒は、Enter かフォーカスが外れたときに確定する (Edit ToDo と同じ)
     m_dp_time->Bind(wxEVT_DATE_CHANGED, [this](wxDateEvent&) { ApplyTimeFromControls(); });
@@ -488,13 +495,18 @@ void Plan::RunCheck() {
         note = wxString::Format(_("Windows in %s - %s that have not ended"),
                                 m_applied.from.Format("%Y-%m-%d"), m_applied.to.Format("%Y-%m-%d"));
     }
+    // カテゴリで絞っているときは、そのカテゴリ以下の Goal だけを表示する
+    if (m_applied.category_id != -1) {
+        note += "\n" + wxString::Format(_("Goals of: %s"), wxString::FromUTF8(m_db.GetCategoriesPath(m_applied.category_id)));
+    }
     note += _(" (includes unsaved plans)");
 
     if (to <= from) {
         m_check_panel->SetItems({}, _("The selected period has already ended"));
         return;
     }
-    m_check_panel->SetItems(PlanFeasibility::Check(m_db, CollectEffectivePlans(from, to), from, to, now), note);
+    m_check_panel->SetItems(PlanFeasibility::Check(m_db, CollectEffectivePlans(from, to), from, to, now,
+                                                   m_applied.category_id), note);
 }
 
 std::vector<PlanFeasibility::PlanSpan> Plan::CollectEffectivePlans(long long from, long long to) {
@@ -644,9 +656,9 @@ int Plan::InsertSorted(const PlanRow& row) {
 }
 
 // 選択中の行 (行ラベルで選択。なければカーソルのある行) の m_rows の添字を、昇順で返す
-std::vector<int> Plan::SelectedDataIndices() const {
+std::vector<int> Plan::SelectedDataIndices(bool include_cursor) const {
     wxArrayInt selected = m_grid->GetSelectedRows();
-    if (selected.IsEmpty() && m_grid->GetGridCursorRow() >= 0) selected.Add(m_grid->GetGridCursorRow());
+    if (include_cursor && selected.IsEmpty() && m_grid->GetGridCursorRow() >= 0) selected.Add(m_grid->GetGridCursorRow());
 
     std::vector<int> indices;
     for (int g : selected) {
@@ -658,25 +670,40 @@ std::vector<int> Plan::SelectedDataIndices() const {
     return indices;
 }
 
+// Add Row: 日付の組と時間帯の組を掛け合わせて、まとめて予定を追加するダイアログを開く。
+// ダイアログの F3 (追加して開いたまま) で、続けて何度も追加できる
 void Plan::AddRow() {
     CaptureGrid();
 
-    // 既定は、次の正時から 1 時間。カテゴリは、いちばん下の行と同じにする
-    wxDateTime start = wxDateTime::Now();
-    start.SetMinute(0);
-    start.SetSecond(0);
-    start.Add(wxTimeSpan::Hours(1));
-    const wxDateTime end = start + wxTimeSpan::Hours(1);
+    // カテゴリの初期値は、カーソルのある行。なければ、いちばん下の行
+    long default_category = -1;
+    const int cursor_row = m_grid->GetGridCursorRow();
+    if (cursor_row >= 0 && cursor_row < static_cast<int>(m_grid_to_data.size()) && m_grid_to_data[cursor_row] >= 0) {
+        m_rows[m_grid_to_data[cursor_row]].cell[COL_CATEGORY].ToLong(&default_category);
+    } else if (!m_rows.empty()) {
+        m_rows.back().cell[COL_CATEGORY].ToLong(&default_category);
+    }
+    if (default_category <= 0) default_category = -1;
 
-    PlanRow row;
-    row.state = RowState::New;
-    row.select_after_render = true;
-    if (!m_rows.empty()) row.cell[COL_CATEGORY] = m_rows.back().cell[COL_CATEGORY];
-    row.cell[COL_START] = start.Format(kTimeFormat);
-    row.cell[COL_END] = end.Format(kTimeFormat);
-
-    InsertSorted(row);
-    Render();
+    PlanAddDlg dlg(this, m_db, static_cast<int>(default_category),
+        // 追加を頼まれたとき: 表に新規行として足す (開始時刻の順に入る)
+        [this](const PlanAddDlg::Request& request) {
+            CaptureGrid();
+            for (const PlanAddDlg::Entry& entry : request.entries) {
+                PlanRow row;
+                row.state = RowState::New;
+                row.select_after_render = true;
+                row.cell[COL_CATEGORY] = wxString::Format("%d", request.category_id);
+                row.cell[COL_START] = entry.start.Format(kTimeFormat);
+                row.cell[COL_END] = entry.end.Format(kTimeFormat);
+                row.cell[COL_MEMO] = request.memo;
+                InsertSorted(row);
+            }
+            Render();
+        },
+        // 重なりの目印用: 指定カテゴリの、すでにある予定。表で絞って見えていない予定や、未保存の変更も含める
+        [this](int category_id) { return ExistingSpans(category_id); });
+    dlg.ShowModal();
 }
 
 void Plan::DeleteSelectedRows() {
@@ -727,9 +754,20 @@ void Plan::DuplicateSelected() {
         return;
     }
 
+    // ずらす量は整数 (負なら過去)。読めなければ、複製しない
+    long shift = 0;
+    wxString shift_text = m_tc_shift->GetValue();
+    shift_text.Trim().Trim(false);
+    if (!shift_text.ToLong(&shift) || shift < -100000 || shift > 100000) {
+        wxMessageBox(_("Shift by must be an integer (a negative number goes back in time)"), "Error", wxOK | wxICON_WARNING, this);
+        m_tc_shift->SetFocus();
+        m_tc_shift->SelectAll();
+        return;
+    }
+
     std::vector<PlanRow> source;
     for (int i : indices) source.push_back(m_rows[i]);
-    DuplicateRows(source, m_sc_shift->GetValue(), m_ch_unit->GetSelection(), m_cb_copy_memo->GetValue());
+    DuplicateRows(source, static_cast<int>(shift), m_ch_unit->GetSelection(), m_cb_copy_memo->GetValue());
 }
 
 // Ctrl+C: 選択した行の内容をためる (システムのクリップボードにも、タブ区切りの文字列を入れる)
@@ -773,16 +811,13 @@ void Plan::OnKeyDown(wxKeyEvent& event) {
             PasteClipboard();
             return;
         }
-        // Ctrl+E: 日時のセルにカーソルがあるときだけ、ダイアログで編集する
-        if (key == 'E') {
-            const int col = m_grid->GetGridCursorCol();
-            const int row = m_grid->GetGridCursorRow();
-            if ((col == COL_START || col == COL_END) && row >= 0 && row < static_cast<int>(m_grid_to_data.size()) &&
-                m_grid_to_data[row] >= 0) {
-                OpenTimeDialog();
-                return;
-            }
-        }
+    }
+
+    // F2: 編集画面を開く。2 行以上選んでいればまとめて、そうでなければカーソルのある行を直す。
+    // (表の既定では F2 はセル内の編集を始めるが、セルを編集している最中は、そちらに任せる)
+    if (event.GetKeyCode() == WXK_F2 && !event.HasAnyModifiers() && !m_grid->IsCellEditControlShown()) {
+        OpenEditor();
+        return;
     }
     event.Skip();
 }
@@ -910,7 +945,7 @@ void Plan::SyncTimeEditor(int row, int col) {
         m_dp_time->SetValue(dt);
         m_tc_hhmm->SetValue(dt.Format("%H:%M"));
         m_tc_ss->SetValue(dt.Format("%S"));
-        m_st_time_target->SetLabel(wxString::Format(_("Editing: row %d, %s  (Ctrl+E: edit in a dialog)"),
+        m_st_time_target->SetLabel(wxString::Format(_("Editing: row %d, %s  (F2: edit the row in a dialog)"),
                                                     row + 1, col == COL_START ? "start_time" : "end_time"));
     } else {
         m_tc_hhmm->ChangeValue("");
@@ -961,22 +996,131 @@ void Plan::ApplyTimeValue(int row, int col, const wxDateTime& dt) {
     CellValueChanged(row, col);
 }
 
-// Ctrl+E: カーソルのある start_time / end_time セルを、日付・時刻・秒のダイアログで編集する
-void Plan::OpenTimeDialog() {
-    const int row = m_grid->GetGridCursorRow();
-    const int col = m_grid->GetGridCursorCol();
-    if (row < 0 || row >= static_cast<int>(m_grid_to_data.size()) || m_grid_to_data[row] < 0) return;
-    if (col != COL_START && col != COL_END) return;
+// 指定カテゴリの、すでにある予定の [開始, 終了) (epoch 秒)。表で絞って見えていない予定や、未保存の変更も含める
+std::vector<std::pair<long long, long long>> Plan::ExistingSpans(int category_id) {
+    std::vector<std::pair<long long, long long>> spans;
+    const long long forever = 4102444800LL; // 2100-01-01
+    for (const PlanFeasibility::PlanSpan& p : CollectEffectivePlans(0, forever)) {
+        if (p.category_id == category_id) spans.emplace_back(p.start, p.end);
+    }
+    return spans;
+}
 
-    wxDateTime current;
-    if (!ParseLocalTime(m_grid->GetCellValue(row, col), current)) current = wxDateTime::Now();
+// F2: 2 行以上選んでいれば、まとめて直す。そうでなければ、カーソルのある行を直す
+void Plan::OpenEditor() {
+    CaptureGrid();
+    const std::vector<int> selected = SelectedDataIndices(false);
+    if (selected.size() >= 2) {
+        OpenRowsEditor(selected);
+        return;
+    }
+    OpenRowEditor(m_grid->GetGridCursorRow());
+}
 
-    DateTimeDlg dlg(this,
-                    wxString::Format(_("Edit %s (row %d)"), col == COL_START ? "start_time" : "end_time", row + 1),
-                    current);
-    if (dlg.ShowModal() != wxID_OK) return;
+// 選んだ複数の行を、Add Rows と同じ画面 (複数行の編集モード) で、まとめて直す。
+// 値が行ごとに違う欄は空欄で出て、空欄のままなら各行の値を変えない。入力した欄だけが、全行に反映される
+void Plan::OpenRowsEditor(const std::vector<int>& indices) {
+    if (indices.size() < 2) return;
+    CaptureGrid();
 
-    ApplyTimeValue(row, col, dlg.GetDateTime());
+    PlanAddDlg::EditInitial initial;
+    for (int index : indices) {
+        if (index < 0 || index >= static_cast<int>(m_rows.size())) return;
+        const PlanRow& row = m_rows[index];
+
+        PlanAddDlg::EditInitial::Original original;
+        original.row_number = m_data_to_grid[index] + 1;
+        long category_id = 0;
+        original.category_id = (row.cell[COL_CATEGORY].ToLong(&category_id) && category_id > 0) ? static_cast<int>(category_id) : -1;
+        if (!ParseLocalTime(row.cell[COL_START], original.start) || !ParseLocalTime(row.cell[COL_END], original.end)) {
+            wxMessageBox(wxString::Format(_("Row %d has an invalid time. Fix it first"), original.row_number),
+                         "Error", wxOK | wxICON_WARNING, this);
+            return;
+        }
+        original.memo = row.cell[COL_MEMO];
+        initial.originals.push_back(original);
+    }
+
+    PlanAddDlg dlg(this, m_db, initial,
+        // OK (F2) のとき: 選んだ行ごとに、直したあとの日時 (request.entries) を入れる。変えない欄は、その行の値のまま
+        [this, indices](const PlanAddDlg::Request& request) {
+            if (request.entries.size() != indices.size()) return;
+
+            std::vector<PlanRow> updated;
+            for (size_t k = 0; k < indices.size(); ++k) {
+                PlanRow row = m_rows[indices[k]];
+                bool changed = false;
+                auto set = [&](int column, const wxString& value) {
+                    if (row.cell[column] != value) {
+                        row.cell[column] = value;
+                        changed = true;
+                    }
+                };
+                if (request.category_id != -1) set(COL_CATEGORY, wxString::Format("%d", request.category_id));
+                set(COL_START, request.entries[k].start.Format(kTimeFormat));
+                set(COL_END, request.entries[k].end.Format(kTimeFormat));
+                if (request.apply_memo) set(COL_MEMO, request.memo);
+
+                if (changed && row.state == RowState::Clean) row.state = RowState::Modified;
+                row.select_after_render = true; // 直した行は、選択したままにする
+                updated.push_back(row);
+            }
+
+            for (auto it = indices.rbegin(); it != indices.rend(); ++it) m_rows.erase(m_rows.begin() + *it); // 後ろから消す
+            for (const PlanRow& row : updated) InsertSorted(row); // 日時が変わっても、順番どおりの位置に入る
+            Render();
+        },
+        [this](int category_id) { return ExistingSpans(category_id); });
+    dlg.ShowModal();
+}
+
+// ダブルクリック / F2: 表の grid_row の予定を、Add Rows と同じ画面 (編集モード) で直す。
+// カテゴリ・日付・時間帯・メモを、まとめて直せる。直した行は、開始時刻に合う位置に移る
+void Plan::OpenRowEditor(int grid_row) {
+    if (grid_row < 0 || grid_row >= static_cast<int>(m_grid_to_data.size()) || m_grid_to_data[grid_row] < 0) return;
+
+    CaptureGrid();
+    const int index = m_grid_to_data[grid_row];
+    const PlanRow& current = m_rows[index];
+
+    PlanAddDlg::EditInitial initial;
+    initial.row_number = grid_row + 1;
+    long category_id = 0;
+    initial.category_id = (current.cell[COL_CATEGORY].ToLong(&category_id) && category_id > 0) ? static_cast<int>(category_id) : -1;
+    if (!ParseLocalTime(current.cell[COL_START], initial.start) || !ParseLocalTime(current.cell[COL_END], initial.end)) {
+        initial.start = wxDateTime::Now();
+        initial.end = initial.start + wxTimeSpan::Hours(1);
+    }
+    initial.memo = current.cell[COL_MEMO];
+
+    PlanAddDlg dlg(this, m_db, initial,
+        // OK (F2) のとき: この行の内容を置き換える (追加モードと同じ、1 件だけの Request で届く)
+        [this, index](const PlanAddDlg::Request& request) {
+            if (request.entries.size() != 1 || index < 0 || index >= static_cast<int>(m_rows.size())) return;
+            const PlanAddDlg::Entry& entry = request.entries[0];
+
+            PlanRow row = m_rows[index];
+            const wxString category = wxString::Format("%d", request.category_id);
+            const wxString start = entry.start.Format(kTimeFormat);
+            const wxString end = entry.end.Format(kTimeFormat);
+            if (row.cell[COL_CATEGORY] == category && row.cell[COL_START] == start &&
+                row.cell[COL_END] == end && row.cell[COL_MEMO] == request.memo) {
+                return; // 何も変わっていない
+            }
+
+            row.cell[COL_CATEGORY] = category;
+            row.cell[COL_START] = start;
+            row.cell[COL_END] = end;
+            row.cell[COL_MEMO] = request.memo;
+            if (row.state == RowState::Clean) row.state = RowState::Modified;
+            row.select_after_render = true;
+
+            m_rows.erase(m_rows.begin() + index);
+            InsertSorted(row); // 開始時刻が変わっても、順番どおりの位置に入る
+            Render();
+        },
+        [this](int category_id) { return ExistingSpans(category_id); });
+    dlg.ShowModal();
 }
 
 void Plan::OnCellDoubleClick(wxGridEvent& event) {
@@ -985,12 +1129,8 @@ void Plan::OnCellDoubleClick(wxGridEvent& event) {
         return;
     }
     if (event.GetCol() == COL_START || event.GetCol() == COL_END) {
-        const int row = event.GetRow();
-        if (row >= 0 && row < static_cast<int>(m_grid_to_data.size()) && m_grid_to_data[row] >= 0) {
-            m_grid->SetGridCursor(row, event.GetCol()); // ダブルクリックしたセルを対象にして、Ctrl+E と同じダイアログを開く
-            OpenTimeDialog();
-        }
-        return; // セル内の編集は始めない (空き日の行は、何もしない)
+        OpenRowEditor(event.GetRow()); // F2 と同じ画面を開く (空き日の行は、何もしない)
+        return; // セル内の編集は始めない
     }
     event.Skip();
 }

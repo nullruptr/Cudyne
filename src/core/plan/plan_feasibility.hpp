@@ -27,14 +27,41 @@ struct Item {
     PlanCheck::Result result;
 };
 
+// category_id 自身と、その配下 (フォルダも含む) すべての Category ID
+inline std::vector<int> CategoryAndDescendants(Database& db, int category_id) {
+    std::vector<int> ids{category_id};
+    std::vector<Database::Category> all;
+    if (!db.GetAllCategories(all)) return ids;
+
+    // 親から子へ、順にたどる (ids に足しながら進む)
+    for (size_t i = 0; i < ids.size(); ++i) {
+        for (const Database::Category& c : all) {
+            if (c.parent_id == ids[i] && std::find(ids.begin(), ids.end(), c.id) == ids.end()) ids.push_back(c.id);
+        }
+    }
+    return ids;
+}
+
 // [from, to) と重なる窓を、有効な Goal ごとに判定する。窓は、終わっていないものだけを渡すこと (from >= now)。
-// ToDo に設定した Goal は、予定が ToDo と結びついていないため判定できない
+// ToDo に設定した Goal は、予定が ToDo と結びついていないため判定できない。
+// category_filter が -1 以外のときは、そのカテゴリ以下に設定された Goal だけを判定する
+// (判定に使う予定は、絞り込みに関係なく、Goal の対象 (Category 以下) の全予定)
 inline std::vector<Item> Check(Database& db, const std::vector<PlanSpan>& plans,
-                               long long from, long long to, long long now) {
+                               long long from, long long to, long long now, int category_filter = -1) {
     std::vector<Item> items;
+
+    std::vector<int> shown_categories;
+    if (category_filter != -1) shown_categories = CategoryAndDescendants(db, category_filter);
 
     for (const Database::Goal& g : db.GetAllGoals()) {
         if (g.is_active != 1) continue;
+
+        // 絞り込み中は、対象のカテゴリ以下の Goal だけ (ToDo に設定した Goal は、カテゴリを持たないので除く)
+        if (category_filter != -1 &&
+            (g.category_id == -1 ||
+             std::find(shown_categories.begin(), shown_categories.end(), g.category_id) == shown_categories.end())) {
+            continue;
+        }
 
         Item base;
         base.goal_id = g.goal_id;

@@ -43,7 +43,7 @@ PlanCheckPanel::PlanCheckPanel(wxWindow* parent)
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
     const int gap = FromDIP(6);
 
-    wxStaticText* title = new wxStaticText(this, wxID_ANY, _("Can the goals be achieved with these plans?"));
+    wxStaticText* title = new wxStaticText(this, wxID_ANY, _("Goal Check"));
     wxFont font = title->GetFont();
     font.SetWeight(wxFONTWEIGHT_BOLD);
     title->SetFont(font);

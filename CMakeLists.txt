@@ -44,7 +44,6 @@ set(SOURCES
     src/core/db/db_total.cpp
     src/core/utils/format_time.cpp
     src/core/utils/utils.cpp
-    src/gui/common/datetime_dlg/datetime_dlg.cpp
     src/gui/common/sel_category_dlg/sel_category_dlg.cpp
     src/gui/common/sel_todo_dlg/sel_todo_dlg.cpp
     src/gui/connect_db/connect_db.cpp
@@ -56,6 +55,7 @@ set(SOURCES
     src/gui/mainwnd/record_viewer/record_viewer.cpp
     src/gui/mainwnd/recording/recording.cpp
     src/gui/plan/plan.cpp
+    src/gui/plan/plan_add_dlg.cpp
     src/gui/plan/plan_check_panel.cpp
     src/gui/goal/edit_goal_dlg.cpp
     src/gui/goal/goal.cpp

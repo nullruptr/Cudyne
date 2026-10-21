@@ -60,7 +60,9 @@ class Plan : public wxPanel {
 	FilterState m_applied;                 // 直近に読み込んだときの絞り込み
 
 	// 複製
-	wxSpinCtrl* m_sc_shift;                // 複製した予定を、元から何(単位)ずらすか。負なら過去へ
+	// 複製した予定を、元から何(単位)ずらすか。負なら過去へ。
+	// 矢印キーやホイールで勝手に値が変わらないよう、スピンボタンではなくテキスト欄にしている
+	wxTextCtrl* m_tc_shift;
 	wxChoice* m_ch_unit;
 	wxCheckBox* m_cb_copy_memo;
 
@@ -107,7 +109,8 @@ class Plan : public wxPanel {
 
 	// 行の操作
 	int InsertSorted(const PlanRow& row);  // 開始時刻の順に挿入する。入れた位置を返す
-	std::vector<int> SelectedDataIndices() const; // 選択中の行 (なければカーソルの行) の m_rows の添字
+	// 選択中の行 (行ラベルで選んだ行。include_cursor = true で、選んでいなければカーソルの行) の m_rows の添字。昇順
+	std::vector<int> SelectedDataIndices(bool include_cursor = true) const;
 	void AddRow();
 	void DeleteSelectedRows();
 	void DuplicateRows(const std::vector<PlanRow>& source, int shift, int unit, bool copy_memo);
@@ -124,7 +127,10 @@ class Plan : public wxPanel {
 	void SyncTimeEditor(int grid_row, int grid_col);   // 選択したセルの日時を入力欄に出す。対象外のセルなら無効にする
 	void ApplyTimeFromControls();                      // 入力欄の日時を、選択中のセルに反映する
 	void ApplyTimeValue(int grid_row, int grid_col, const wxDateTime& dt); // 日時をセルに反映する。値が変わらなければ何もしない
-	void OpenTimeDialog();                             // Ctrl+E: 選択中の日時セルを、ダイアログで編集する
+	void OpenEditor();                                 // F2: 2 行以上選んでいればまとめて、そうでなければカーソルの行を、編集画面で直す
+	void OpenRowEditor(int grid_row);                  // ダブルクリック / F2: 予定の行を、Add Rows と同じ画面 (編集モード) で直す
+	void OpenRowsEditor(const std::vector<int>& data_indices); // 選んだ複数の行を、まとめて直す (複数行の編集モード)
+	std::vector<std::pair<long long, long long>> ExistingSpans(int category_id); // 指定カテゴリの、すでにある予定の [開始, 終了) (epoch 秒)
 	void OnSelectCell(wxGridEvent& event);
 	void OnCellChanging(wxGridEvent& event);
 	void OnCellChanged(wxGridEvent& event);
