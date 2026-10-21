@@ -34,6 +34,19 @@ bool Database::UpdateGoal(const Goal& goal) {
     if (sql.get_backend() == nullptr) return false;
 
     try {
+        // 窓の位置が変わる変更は、窓に紐づく行(例外設定・Rolling のサイクル)を指す先をずらしてしまう
+        const Goal old = GetGoalById(goal.goal_id);
+        const bool window_changed = old.goal_id != -1 &&
+            (old.period_type != goal.period_type || old.period_n != goal.period_n || old.start_time != goal.start_time);
+        if (window_changed) {
+            if (HasGoalWindowOverride(goal.goal_id)) {
+                std::cerr << "UpdateGoal Error: goal has target overrides; period_type / period_n / start_time are locked" << std::endl;
+                return false;
+            }
+            // 例外設定がなければ、残っているのは Rolling のサイクル履歴だけ。起点が変わるので作り直す
+            sql << "DELETE FROM goal_window WHERE goal_id = :goal_id", soci::use(goal.goal_id, "goal_id");
+        }
+
         soci::indicator category_ind = (goal.category_id == -1) ? soci::i_null : soci::i_ok;
         soci::indicator todo_ind     = (goal.todo_id == -1)     ? soci::i_null : soci::i_ok;
         soci::indicator period_n_ind = (goal.period_n == -1)    ? soci::i_null : soci::i_ok;
@@ -118,6 +131,100 @@ bool Database::DeleteGoal(int goal_id) {
         return false;
     }
     return true;
+}
+
+std::vector<Database::GoalWindow> Database::GetGoalWindows(int goal_id) {
+    std::vector<GoalWindow> results;
+    if (sql.get_backend() == nullptr) return results;
+
+    try {
+        soci::rowset<soci::row> rs = (sql.prepare <<
+            "SELECT id, goal_id, window_key, target_override, achieved_at, memo "
+            "FROM goal_window WHERE goal_id = :goal_id ORDER BY window_key",
+            soci::use(goal_id, "goal_id"));
+
+        for (const soci::row& row : rs) {
+            GoalWindow w;
+            w.id              = (int)row.get<long long>(0);
+            w.goal_id         = (int)row.get<long long>(1);
+            w.window_key      = row.get<std::string>(2);
+            w.target_override = row.get_indicator(3) == soci::i_null ? -1 : row.get<long long>(3);
+            w.achieved_at     = row.get_indicator(4) == soci::i_null ? "" : row.get<std::string>(4);
+            w.memo            = row.get_indicator(5) == soci::i_null ? "" : row.get<std::string>(5);
+            results.push_back(w);
+        }
+    } catch (const soci::soci_error& e) {
+        std::cerr << "GetGoalWindows Error: " << e.what() << std::endl;
+    }
+    return results;
+}
+
+bool Database::SetGoalWindowAchieved(int goal_id, const std::string& window_key, const std::string& achieved_at) {
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+        sql << "INSERT INTO goal_window (goal_id, window_key, achieved_at) VALUES (:goal_id, :window_key, :achieved_at) "
+               "ON CONFLICT (goal_id, window_key) DO UPDATE SET achieved_at = excluded.achieved_at",
+            soci::use(goal_id, "goal_id"),
+            soci::use(window_key, "window_key"),
+            soci::use(achieved_at, "achieved_at");
+    } catch (const soci::soci_error& e) {
+        std::cerr << "SetGoalWindowAchieved Error: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool Database::SetGoalWindowOverride(int goal_id, const std::string& window_key, long long target_override, const std::string& memo) {
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+        sql << "INSERT INTO goal_window (goal_id, window_key, target_override, memo) "
+               "VALUES (:goal_id, :window_key, :target_override, :memo) "
+               "ON CONFLICT (goal_id, window_key) DO UPDATE SET "
+               "target_override = excluded.target_override, memo = excluded.memo",
+            soci::use(goal_id, "goal_id"),
+            soci::use(window_key, "window_key"),
+            soci::use(target_override, "target_override"),
+            soci::use(memo, "memo");
+    } catch (const soci::soci_error& e) {
+        std::cerr << "SetGoalWindowOverride Error: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool Database::ClearGoalWindowOverride(int goal_id, const std::string& window_key) {
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+        soci::transaction tr(sql);
+        sql << "UPDATE goal_window SET target_override = NULL, memo = NULL "
+               "WHERE goal_id = :goal_id AND window_key = :window_key",
+            soci::use(goal_id, "goal_id"), soci::use(window_key, "window_key");
+        sql << "DELETE FROM goal_window WHERE goal_id = :goal_id AND window_key = :window_key "
+               "AND target_override IS NULL AND achieved_at IS NULL",
+            soci::use(goal_id, "goal_id"), soci::use(window_key, "window_key");
+        tr.commit();
+    } catch (const soci::soci_error& e) {
+        std::cerr << "ClearGoalWindowOverride Error: " << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool Database::HasGoalWindowOverride(int goal_id) {
+    if (sql.get_backend() == nullptr) return false;
+
+    try {
+        int count = 0;
+        sql << "SELECT COUNT(*) FROM goal_window WHERE goal_id = :goal_id AND target_override IS NOT NULL",
+            soci::into(count), soci::use(goal_id, "goal_id");
+        return count > 0;
+    } catch (const soci::soci_error& e) {
+        std::cerr << "HasGoalWindowOverride Error: " << e.what() << std::endl;
+        return false;
+    }
 }
 
 Database::Goal Database::GetGoalById(int goal_id) {

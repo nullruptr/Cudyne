@@ -17,6 +17,7 @@ private:
 	wxButton* m_btn_add;
 	wxButton* m_btn_edit;
 	wxButton* m_btn_delete;
+	wxButton* m_btn_override; // 選択中の goal の、窓ごとの目標時間の例外設定を開く
 	wxButton* m_btn_refresh; // 押したときに、DB から読み直す
 	wxTimer m_timer;         // 1 秒ごとに、残り時間などを再計算する(DB には問い合わせない)
 
@@ -33,5 +34,6 @@ private:
 	void AddGoal();            // 新規作成ダイアログを開く
 	void EditSelectedGoal();   // 選択中の goal の編集ダイアログを開く
 	void DeleteSelectedGoal(); // 選択中の goal を、確認のうえ削除する
+	void OpenOverrides();      // 選択中の goal の例外設定ダイアログを開く
 	void UpdateEditButton();   // 行が選択されているときだけ Edit / Delete を有効にする
 };

@@ -1,7 +1,11 @@
 #pragma once
 // Goal の評価。仕様は goal.md。時刻は epoch 秒(UTC)、窓の境界はローカル時刻で決める
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
 #include <ctime>
+#include <string>
+#include <vector>
 
 namespace GoalEval {
 
@@ -192,6 +196,54 @@ inline Window GetWindow(const GoalSpec& spec, long long at) {
         if (w.deadline == kNone || w.deadline > spec.end_epoch) w.deadline = spec.end_epoch;
     }
     return w;
+}
+
+// 目標の例外設定を指す、窓のキー = 窓の始点のローカル暦日 ("YYYY-MM-DD")。
+// タイムゾーンを変えても、同じ日付が同じ窓を指す。Rolling / Undefined は例外設定の対象外
+inline std::string WindowKey(long long window_start) {
+    const std::tm tm = detail::LocalTm(window_start);
+    char buf[16];
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+    return buf;
+}
+
+// 例外設定に対応している Period Type か
+inline bool SupportsOverride(PeriodType t) {
+    return t != PeriodType::Rolling && t != PeriodType::Undefined;
+}
+
+// "YYYY-MM-DD" (ローカル暦日) の 0 時の epoch。不正な形式は kNone
+inline long long WindowKeyToEpoch(const std::string& key) {
+    // "YYYY-MM-DD" 固定の形式
+    if (key.size() != 10 || key[4] != '-' || key[7] != '-') return kNone;
+    for (size_t i = 0; i < key.size(); ++i) {
+        if (i != 4 && i != 7 && (key[i] < '0' || key[i] > '9')) return kNone;
+    }
+    std::tm tm = {};
+    tm.tm_year = std::atoi(key.substr(0, 4).c_str()) - 1900;
+    tm.tm_mon = std::atoi(key.substr(5, 2).c_str()) - 1;
+    tm.tm_mday = std::atoi(key.substr(8, 2).c_str());
+    return detail::FromLocalTm(tm);
+}
+
+// 終了済みの record の区間 (epoch 秒)
+struct Span {
+    long long begin = 0;
+    long long end = 0;
+};
+
+// Rolling の達成時刻 T。cycle_start 以降の実績が target に達した record の終了時刻を返す (届かなければ kNone)。
+// 超過分は捨てるので、T は record の途中ではなく終了時刻。cycle_start をまたぐ record は重なる部分だけを数える。
+// spans は begin 昇順。
+inline long long FindAchievedAt(const std::vector<Span>& spans, long long cycle_start, long long target) {
+    if (target <= 0) return kNone;
+    long long total = 0;
+    for (const Span& s : spans) {
+        if (s.end <= cycle_start) continue;
+        total += s.end - std::max(s.begin, cycle_start);
+        if (total >= target) return s.end;
+    }
+    return kNone;
 }
 
 // 急ぎの閾値 = min(24h, max(1h, 残り / 2))

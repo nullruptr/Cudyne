@@ -10,7 +10,7 @@
 
 namespace {
 enum TargetKind { KIND_CATEGORY = 0, KIND_TODO = 1 };
-enum PeriodType { PERIOD_DAILY = 0, PERIOD_WEEKLY, PERIOD_MONTHLY, PERIOD_EVERY_N_DAYS, PERIOD_UNDEFINED };
+enum PeriodType { PERIOD_DAILY = 0, PERIOD_WEEKLY, PERIOD_MONTHLY, PERIOD_EVERY_N_DAYS, PERIOD_UNDEFINED, PERIOD_ROLLING };
 enum TargetUnit { UNIT_SECONDS = 0, UNIT_MINUTES, UNIT_HOURS };
 }
 
@@ -94,12 +94,18 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int
     periods.Add(_("Monthly"));
     periods.Add(_("Every n Days"));
     periods.Add(_("Undefined"));
+    periods.Add(_("Rolling (restart from achievement)"));
     m_ch_period_type = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, periods);
     m_ch_period_type->SetSelection(PERIOD_DAILY);
     grid->Add(new wxStaticText(this, wxID_ANY, _("Period Type")), labelFlags);
     grid->Add(m_ch_period_type, valueFlags);
 
-    // Every n Days
+    m_st_lock_note = new wxStaticText(this, wxID_ANY, "");
+    m_st_lock_note->SetForegroundColour(wxColour(180, 90, 0));
+    grid->AddSpacer(0);
+    grid->Add(m_st_lock_note, labelFlags);
+
+    // Every n Days / Rolling の n
     m_sc_every_n = new wxSpinCtrl(this, wxID_ANY, "3", wxDefaultPosition, FromDIP(wxSize(70, -1)), wxSP_ARROW_KEYS, 1, 365, 3);
     m_st_days = new wxStaticText(this, wxID_ANY, _("Days"));
     wxBoxSizer* every_n_sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -239,6 +245,8 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int
         m_tc_memo->SetValue(wxString::FromUTF8(loaded.memo));
     }
 
+    m_period_locked = m_goal_id != -1 && m_db.HasGoalWindowOverride(m_goal_id);
+
     UpdateSelectedName();
     UpdatePeriodControls();
     UpdateEndControls();
@@ -261,6 +269,7 @@ EditGoalDlg::EditGoalDlg(wxWindow* parent, Database& dbRef, int category_id, int
     btn_cancel->Bind(wxEVT_BUTTON, &EditGoalDlg::OnCancel, this);
 
     btn_now->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+        if (m_period_locked) return;
         wxDateTime now = wxDateTime::Now();
         m_dp_start->SetValue(now);
         m_tc_start_hhmm->SetValue(now.Format("%H:%M"));
@@ -362,7 +371,7 @@ void EditGoalDlg::OnSave(wxCommandEvent& WXUNUSED(event)) {
     goal.todo_id     = is_category ? -1 : m_todo_id;
     goal.goal_name   = m_tc_name->GetValue().utf8_string();
     goal.period_type = m_ch_period_type->GetSelection();
-    goal.period_n    = (goal.period_type == PERIOD_EVERY_N_DAYS) ? m_sc_every_n->GetValue() : -1;
+    goal.period_n    = (goal.period_type == PERIOD_EVERY_N_DAYS || goal.period_type == PERIOD_ROLLING) ? m_sc_every_n->GetValue() : -1;
     goal.target_time = GetTargetSeconds();
     goal.start_time  = start_time;
     goal.end_time    = end_time;
@@ -422,9 +431,19 @@ void EditGoalDlg::UpdateSelectedName() {
 }
 
 void EditGoalDlg::UpdatePeriodControls() {
-    const bool every_n = m_ch_period_type->GetSelection() == PERIOD_EVERY_N_DAYS;
-    m_sc_every_n->Enable(every_n);
-    m_st_days->Enable(every_n);
+    const int type = m_ch_period_type->GetSelection();
+    const bool needs_n = type == PERIOD_EVERY_N_DAYS || type == PERIOD_ROLLING;
+    m_sc_every_n->Enable(needs_n && !m_period_locked);
+    m_st_days->Enable(needs_n);
+
+    // 目標の例外設定があるときは、窓の位置が変わる項目を固定する
+    m_ch_period_type->Enable(!m_period_locked);
+    m_dp_start->Enable(!m_period_locked);
+    m_tc_start_hhmm->Enable(!m_period_locked);
+    m_tc_start_ss->Enable(!m_period_locked);
+    m_st_lock_note->SetLabel(m_period_locked
+        ? _("Period Type, n and Start Time cannot be changed while this goal has target overrides.")
+        : wxString());
     UpdateTargetLimit(); // 期間が変わると最大稼働時間も変わる
     UpdateTargetWarning();
 }
@@ -444,7 +463,8 @@ long long EditGoalDlg::GetPeriodSeconds() const {
     switch (m_ch_period_type->GetSelection()) {
     case PERIOD_WEEKLY:       return 7 * day;
     case PERIOD_MONTHLY:      return 31 * day; // 最大の月に合わせる(有効な目標を弾かないため)
-    case PERIOD_EVERY_N_DAYS: return m_sc_every_n->GetValue() * day;
+    case PERIOD_EVERY_N_DAYS:
+    case PERIOD_ROLLING:      return m_sc_every_n->GetValue() * day;
     case PERIOD_UNDEFINED: {
         // 周期未定義: End があれば Start との差分が最大稼働時間。End がなければ上限なし(-1)
         if (!m_cb_end->GetValue()) return -1;

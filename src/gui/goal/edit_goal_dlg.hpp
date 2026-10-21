@@ -27,6 +27,8 @@ private:
     wxChoice* m_ch_period_type;      // Daily / Weekly / Monthly / Every n Days
     wxSpinCtrl* m_sc_every_n;
     wxStaticText* m_st_days;
+    wxStaticText* m_st_lock_note;    // Period Type などを変更できない理由
+    bool m_period_locked = false;    // 目標の例外設定があると、Period Type / n / Start Time は変更できない
 
     wxDatePickerCtrl* m_dp_start;
     wxTextCtrl* m_tc_start_hhmm;

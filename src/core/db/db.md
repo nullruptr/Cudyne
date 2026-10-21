@@ -7,6 +7,7 @@ erDiagram
     todo ||--o{ records : "TODOと時間記録の関連付け(あれば)"
     categories ||--o{ goal : ""
     todo ||--o{ goal : "(category_id と排他)"
+    goal ||--o{ goal_window : "窓ごとの例外設定 / Rollingのサイクル"
     goal ||--o{ plan : "goalから生成された予定(任意)"
     categories ||--o{ plan : ""
     categories ||--o{ constraints : "target_category_id: 制約の監視対象"
@@ -50,13 +51,22 @@ erDiagram
         integer category_id FK "category_id / todo_id はどちらか一方のみ設定。フォルダを選択したらそれ以下のcategoryの実績も合算して進捗計算(子に個別goalがあっても二重カウントでよい)"
         integer todo_id FK
         text goal_name "任意(空文字可)。同じ対象に複数のgoalを持てる"
-        integer period_type "0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS, 4:UNDEFINED(周期未定義。end_timeがあればstart〜endの差分が最大登録時間)"
-        integer period_n "period_type=3のとき、3日に1回など"
+        integer period_type "0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS, 4:UNDEFINED(周期未定義。end_timeがあればstart〜endの差分が最大登録時間), 5:ROLLING(達成した時刻を起点に、n日以内を繰り返す)"
+        integer period_n "period_type=3, 5のとき、3日に1回など"
         integer target_time "期間ごとの目標(単位:sec)"
         text start_time "開始日時(UTC)"
         text end_time "終了日時(UTC)。NULL=期限なし"
         integer is_active "有効1/無効0"
         text memo "メモ"
+    }
+
+    goal_window {
+        integer id PK
+        integer goal_id FK "goal削除時に一緒に消える (ON DELETE CASCADE)。UNIQUE(goal_id, window_key)"
+        text window_key "通常型: 窓開始のローカル暦日。Rolling: サイクル開始時刻(UTC)"
+        integer target_override "その窓だけの目標(sec)。NULL=例外なし, 0=免除。1件でもあると goal の period_type/period_n/start_time は変更不可"
+        text achieved_at "Rollingのみ。達成時刻T(UTC)。NULL=未達"
+        text memo
     }
 
     plan {

@@ -55,6 +55,7 @@ set(SOURCES
     src/gui/mainwnd/recording/recording.cpp
     src/gui/goal/edit_goal_dlg.cpp
     src/gui/goal/goal.cpp
+    src/gui/goal/goal_override_dlg.cpp
     src/gui/goal/goal_list_dlg.cpp
     src/gui/mainwnd/statistic/statistic.cpp
     src/gui/mainwnd/treectrl/detail.cpp

@@ -18,7 +18,22 @@ Database::~Database(){ // 終了時処理。安全のため、デストラクタ
     Close();
 }
 
-bool Database::Connect(const std::string& path) { // DB に接続 
+namespace {
+// 窓ごとの管理テーブル。Rolling のサイクル(achieved_at)と、窓ごとの目標の例外(target_override)を保存する。
+// 既存の DB にも後から追加するため、Initialize と Connect の両方で実行する (IF NOT EXISTS)
+const char* const kGoalWindowDdl =
+	"CREATE TABLE IF NOT EXISTS goal_window ("
+	"id INTEGER PRIMARY KEY AUTOINCREMENT,"
+	"goal_id INTEGER NOT NULL REFERENCES goal(id) ON DELETE CASCADE," // goal 削除時に一緒に消す
+	"window_key TEXT NOT NULL," // 通常型: 窓開始のローカル暦日 / Rolling: サイクル開始(UTC)
+	"target_override INTEGER," // その窓だけの目標(sec)。NULL = 例外なし, 0 = 免除
+	"achieved_at TEXT," // Rolling のみ。達成時刻 T (UTC)。NULL = 未達
+	"memo TEXT,"
+	"UNIQUE (goal_id, window_key)"
+	")";
+}
+
+bool Database::Connect(const std::string& path) { // DB に接続
     try {
 	// すでに接続されているときは、閉じる
 	if (sql.get_backend() != nullptr) {
@@ -37,6 +52,9 @@ bool Database::Connect(const std::string& path) { // DB に接続
 
 	// 外部キー制約を有効化
 	sql << "PRAGMA foreign_keys = ON";
+
+	// 古い DB には goal_window がないので、ここで足す
+	sql << kGoalWindowDdl;
 
 	m_get_path = path;
 	return true;
@@ -68,7 +86,7 @@ bool Database::Initialize(){
 		return false;
 	}
 
-	const char* sql =
+	const std::string sql_text = std::string(
 		"CREATE TABLE IF NOT EXISTS categories ("// 同名のテーブルが存在しない場合のみ新しいテーブルを作成し、既存の場合はエラーを出さずに処理をスキップ（無視）する
 		"id INTEGER PRIMARY KEY AUTOINCREMENT," // 整数、主キー、連番(INSERT時に id を書く必要がなくなる)
 		"parent_id INTEGER," // 親子関係を識別する
@@ -117,10 +135,10 @@ bool Database::Initialize(){
 		"memo TEXT,"
 		"CHECK ((category_id IS NULL) != (todo_id IS NULL))" // 排他をDB側で保証
 		")"
-		";";
+		";") + kGoalWindowDdl + ";";
 
 	char *errMsg = nullptr;
-	int rc = sqlite3_exec(db, sql, nullptr, nullptr, &errMsg); // 書き込み処理
+	int rc = sqlite3_exec(db, sql_text.c_str(), nullptr, nullptr, &errMsg); // 書き込み処理
 
 	if (rc != SQLITE_OK) {
 		std::cerr << "SQL Error: " << errMsg << std::endl;

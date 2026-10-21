@@ -94,8 +94,8 @@ public:
 		int category_id = -1;  // -1 = NULL (category_id / todo_id はどちらか一方のみ設定)
 		int todo_id = -1;      // -1 = NULL
 		std::string goal_name;
-		int period_type = 0;   // 0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS, 4:UNDEFINED(周期未定義)
-		int period_n = -1;     // -1 = NULL (period_type=3 のときのみ)
+		int period_type = 0;   // 0:DAILY, 1:WEEKLY, 2:MONTHLY, 3:EVERY_N_DAYS, 4:UNDEFINED(周期未定義), 5:ROLLING(達成起点リピート)
+		int period_n = -1;     // -1 = NULL (period_type=3, 5 のときのみ)
 		long long target_time = 0; // 期間ごとの目標(単位:sec)
 		std::string start_time;    // 開始日時(UTC)
 		std::string end_time;      // 終了日時(UTC)。空 = NULL (期限なし)
@@ -107,7 +107,22 @@ public:
 	Database::Goal GetGoalById(int goal_id); // 見つからなければ goal_id = -1
 	std::vector<Database::Goal> GetGoalsByTarget(int category_id, int todo_id); // 対象(どちらか一方、使わない方は -1)に設定された goal を ID 順に列挙
 	std::vector<Database::Goal> GetAllGoals(); // 全 goal を ID 順に列挙
-	bool DeleteGoal(int goal_id);
+	bool DeleteGoal(int goal_id); // goal_window の行も一緒に消える (外部キーの ON DELETE CASCADE)
+
+	// --- goal_window (db_goal.cpp) ---
+	struct GoalWindow {
+		int id = -1;
+		int goal_id = -1;
+		std::string window_key;          // 通常型: 窓開始のローカル暦日 / Rolling: サイクル開始(UTC)
+		long long target_override = -1;  // -1 = NULL (例外なし), 0 = 免除
+		std::string achieved_at;         // Rolling のみ。達成時刻(UTC)。空 = NULL (未達)
+		std::string memo;
+	};
+	std::vector<Database::GoalWindow> GetGoalWindows(int goal_id); // window_key 順
+	bool SetGoalWindowAchieved(int goal_id, const std::string& window_key, const std::string& achieved_at); // なければ作る。target_override は保つ
+	bool SetGoalWindowOverride(int goal_id, const std::string& window_key, long long target_override, const std::string& memo); // なければ作る。achieved_at は保つ
+	bool ClearGoalWindowOverride(int goal_id, const std::string& window_key); // 例外だけを消す。他に持つ情報がなければ行ごと消す
+	bool HasGoalWindowOverride(int goal_id); // 過去・現在を問わず、目標の例外設定が 1 件でもあるか
 	void Close(); // DB クローズ処理
 	
     // --- db_report.cpp ---

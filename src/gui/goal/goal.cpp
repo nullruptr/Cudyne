@@ -2,6 +2,7 @@
 #include "goal.hpp"
 #include "goal_text.hpp"
 #include "edit_goal_dlg.hpp"
+#include "goal_override_dlg.hpp"
 #include "core/goal/goal_eval.hpp"
 #include "core/goal/goal_status.hpp"
 #include "core/utils/format_time.hpp"
@@ -70,6 +71,7 @@ Goal::Goal(wxWindow* parent, Database &dbRef)
     m_btn_add = new wxButton(main_panel, wxID_ANY, _("Add"));
     m_btn_edit = new wxButton(main_panel, wxID_ANY, _("Edit"));
     m_btn_delete = new wxButton(main_panel, wxID_ANY, _("Delete"));
+    m_btn_override = new wxButton(main_panel, wxID_ANY, _("Overrides"));
     m_btn_refresh = new wxButton(main_panel, wxID_ANY, _("Refresh"));
 
     ctrl_sizer->Add(st_choiceCondition, 0, wxALIGN_CENTER_VERTICAL);
@@ -77,6 +79,7 @@ Goal::Goal(wxWindow* parent, Database &dbRef)
     ctrl_sizer->Add(m_btn_add, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(20));
     ctrl_sizer->Add(m_btn_edit, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
     ctrl_sizer->Add(m_btn_delete, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
+    ctrl_sizer->Add(m_btn_override, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
     ctrl_sizer->Add(m_btn_refresh, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(10));
 
     sizer->Add(ctrl_sizer, 0, wxEXPAND | wxALL, FromDIP(10));
@@ -185,6 +188,7 @@ Goal::Goal(wxWindow* parent, Database &dbRef)
     m_btn_add->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { AddGoal(); });
     m_btn_edit->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { EditSelectedGoal(); });
     m_btn_delete->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { DeleteSelectedGoal(); });
+    m_btn_override->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { OpenOverrides(); });
     m_ctrl->Bind(wxEVT_DATAVIEW_ITEM_ACTIVATED, [this](wxDataViewEvent&) { EditSelectedGoal(); }); // ダブルクリック
     m_ctrl->Bind(wxEVT_DATAVIEW_SELECTION_CHANGED, [this](wxDataViewEvent&) { UpdateEditButton(); });
 
@@ -248,10 +252,24 @@ void Goal::DeleteSelectedGoal() {
     Reload();
 }
 
+// 選択中の goal の、目標時間の例外設定を開く。閉じたら読み直す
+void Goal::OpenOverrides() {
+    const wxDataViewItem item = m_ctrl->GetSelection();
+    if (!item.IsOk()) return;
+
+    const int goal_id = m_model->GetGoalId(m_model->GetRow(item));
+    if (goal_id == -1) return;
+
+    GoalOverrideDlg dlg(this, m_db, goal_id);
+    dlg.ShowModal();
+    Reload();
+}
+
 void Goal::UpdateEditButton() {
     const bool selected = m_ctrl->GetSelection().IsOk();
     m_btn_edit->Enable(selected);
     m_btn_delete->Enable(selected);
+    m_btn_override->Enable(selected);
 }
 
 // DB から全 goal を読み直して評価し、一覧を更新する
@@ -283,7 +301,10 @@ void Goal::Reload() {
         }
 
         row.cells[Col_Period] = GoalPeriodText(g);
-        row.cells[Col_Target] = TimeUtils::FormatSeconds(g.target_time);
+        // 例外設定で差し替えられている窓は、通常の目標も添える (例: "30:00:00 (60:00:00)")
+        row.cells[Col_Target] = ev.overridden
+            ? TimeUtils::FormatSeconds(ev.spec.target_seconds) + " (" + TimeUtils::FormatSeconds(ev.normal_target) + ")"
+            : TimeUtils::FormatSeconds(g.target_time);
         row.cells[Col_Start]  = TimeUtils::FormatUTCStringToLocal(g.start_time);
         row.cells[Col_End]    = g.end_time.empty() ? wxString("-") : TimeUtils::FormatUTCStringToLocal(g.end_time);
         row.cells[Col_Active] = g.is_active == 1 ? "Yes" : "No";
