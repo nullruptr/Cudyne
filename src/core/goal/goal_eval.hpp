@@ -12,6 +12,7 @@ enum class PeriodType : int {
     Monthly    = 2,
     EveryNDays = 3,
     Undefined  = 4,
+    Rolling    = 5,               // 達成時刻を起点に、n 日以内を繰り返す
 };
 
 enum class State {
@@ -22,24 +23,30 @@ enum class State {
     NotStarted,
     Missed,
     Urgent,
+    Behind,
     Comfortable,
 };
 
 constexpr long long kNone = -1;
 
+// 遅れ(Behind)の許容幅(pt)。窓の開始直後に、経過率が小さいだけで警告が出ないようにする
+constexpr double kBehindMarginPt = 5.0;
+
 struct GoalSpec {
     PeriodType period_type = PeriodType::Daily;
-    int period_n = 1;             // EveryNDays のとき
+    int period_n = 1;             // EveryNDays / Rolling のとき
     long long target_seconds = 0;
     long long start_epoch = 0;
     long long end_epoch = kNone;
     bool is_active = true;
+    long long cycle_start_epoch = kNone; // Rolling のみ。現在のサイクルの開始。kNone なら start_epoch
 };
 
 struct Window {
     bool valid = false;           // EveryNDays の最初の窓より前は false
     long long start = 0;
-    long long end = kNone;        // End で打ち切り済み
+    long long end = kNone;        // 実績を集計する終点。End で打ち切り済み
+    long long deadline = kNone;   // 猶予と経過率の基準。end と同じだが、Rolling は期限後も窓が閉じないため別
 };
 
 struct Result {
@@ -48,8 +55,11 @@ struct Result {
     long long achieved = 0;
     long long target = 0;
     long long remaining = 0;
-    bool has_slack = false;       // 窓の終点がなければ false
+    bool has_slack = false;       // 窓の期限がなければ false
     long long slack = 0;          // 負になり得る
+    bool has_pace = false;        // 経過率と達成率を計算できるか (期限があり、目標が 0 でない)
+    double elapsed_pct = 0;       // 経過率 (0〜100)
+    double achieved_pct = 0;      // 達成率 (100 を超え得る)
 };
 
 namespace detail {
@@ -154,6 +164,20 @@ inline Window GetWindow(const GoalSpec& spec, long long at) {
         w.end = FromLocalTm(tm);
         break;
     }
+    case PeriodType::Rolling: {
+        const long long s = spec.cycle_start_epoch != kNone ? spec.cycle_start_epoch : spec.start_epoch;
+        if (at < s) {
+            w.valid = false;
+            break;
+        }
+        // n 日は暦日で数える。期限を過ぎても窓は閉じない (達成して初めて次のサイクルへ)
+        std::tm tm = LocalTm(s);
+        tm.tm_mday += std::max(1, spec.period_n);
+        w.start = s;
+        w.end = kNone;
+        w.deadline = FromLocalTm(tm);
+        break;
+    }
     case PeriodType::Undefined:
     default:
         w.start = spec.start_epoch;
@@ -161,8 +185,11 @@ inline Window GetWindow(const GoalSpec& spec, long long at) {
         break;
     }
 
-    if (w.valid && has_end && (w.end == kNone || w.end > spec.end_epoch)) {
-        w.end = spec.end_epoch;
+    if (spec.period_type != PeriodType::Rolling) w.deadline = w.end;
+
+    if (w.valid && has_end) {
+        if (w.end == kNone || w.end > spec.end_epoch) w.end = spec.end_epoch;
+        if (w.deadline == kNone || w.deadline > spec.end_epoch) w.deadline = spec.end_epoch;
     }
     return w;
 }
@@ -182,9 +209,17 @@ inline Result Evaluate(const GoalSpec& spec, long long at, long long now, long l
     r.remaining = std::max(0LL, r.target - r.achieved);
 
     const Window& w = r.window;
-    if (w.valid && w.end != kNone) {
+    if (w.valid && w.deadline != kNone) {
         r.has_slack = true;
-        r.slack = w.end - now - r.remaining;
+        r.slack = w.deadline - now - r.remaining;
+
+        // 経過率 = (今 - 窓の始点) / (期限 - 窓の始点)。期限を過ぎたら 100
+        if (r.target > 0 && w.deadline > w.start) {
+            r.has_pace = true;
+            const double span = static_cast<double>(w.deadline - w.start);
+            r.elapsed_pct = std::min(100.0, std::max(0.0, (now - w.start) / span * 100.0));
+            r.achieved_pct = static_cast<double>(r.achieved) / static_cast<double>(r.target) * 100.0;
+        }
     }
 
     if (!spec.is_active) {
@@ -222,6 +257,8 @@ inline Result Evaluate(const GoalSpec& spec, long long at, long long now, long l
         r.state = State::Missed;
     } else if (r.slack <= UrgentThreshold(r.remaining)) {
         r.state = State::Urgent;
+    } else if (r.has_pace && r.achieved_pct < r.elapsed_pct - kBehindMarginPt) {
+        r.state = State::Behind;
     } else {
         r.state = State::Comfortable;
     }
@@ -237,6 +274,7 @@ inline const char* StateName(State s) {
     case State::NotStarted:    return "NotStarted";
     case State::Missed:        return "Missed";
     case State::Urgent:        return "Urgent";
+    case State::Behind:        return "Behind";
     case State::Comfortable:   return "Comfortable";
     }
     return "";

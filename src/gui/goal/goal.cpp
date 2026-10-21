@@ -36,7 +36,8 @@ void RecomputeRow(GoalRow& row, long long now) {
     const GoalEval::Result res = GoalEval::Evaluate(row.spec, now, now, achieved);
 
     row.state = res.state;
-    row.cells[Col_Status]    = GoalStateText(res.state);
+    row.cells[Col_Status]    = GoalStatusText(res);
+    row.cells[Col_Pace]      = GoalPaceText(res);
     row.cells[Col_Achieved]  = TimeUtils::FormatSeconds(res.achieved);
     row.cells[Col_Remaining] = TimeUtils::FormatSeconds(res.remaining);
     row.cells[Col_Slack]     = res.has_slack ? GoalDurationText(res.slack) : wxString("-");
@@ -143,6 +144,13 @@ Goal::Goal(wxWindow* parent, Database &dbRef)
                  wxDATAVIEW_CELL_INERT,
                  wxCOL_WIDTH_AUTOSIZE,
                  wxALIGN_RIGHT,
+                 wxDATAVIEW_COL_RESIZABLE);
+
+    m_ctrl->AppendTextColumn(_("Pace"),
+                 Col_Pace,
+                 wxDATAVIEW_CELL_INERT,
+                 wxCOL_WIDTH_AUTOSIZE,
+                 wxALIGN_LEFT,
                  wxDATAVIEW_COL_RESIZABLE);
 
     m_ctrl->AppendTextColumn(_("Start"),

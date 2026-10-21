@@ -11,7 +11,7 @@ namespace GoalStatus {
 // DB の goal を評価用の GoalSpec に変換する (時刻は UTC 文字列から epoch 秒へ)
 inline GoalEval::GoalSpec ToSpec(const Database::Goal& g) {
     GoalEval::GoalSpec spec;
-    spec.period_type = (g.period_type >= 0 && g.period_type <= 4)
+    spec.period_type = (g.period_type >= 0 && g.period_type <= 5)
         ? static_cast<GoalEval::PeriodType>(g.period_type)
         : GoalEval::PeriodType::Daily;
     spec.period_n = g.period_n > 0 ? g.period_n : 1;
@@ -53,6 +53,7 @@ inline Group GroupOf(GoalEval::State s) {
         return Group::Achieved;
     case State::Comfortable:
     case State::Urgent:
+    case State::Behind:
     case State::Missed:
     case State::EndedMissed:
         return Group::Unachieved;

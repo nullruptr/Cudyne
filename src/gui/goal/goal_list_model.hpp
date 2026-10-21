@@ -15,6 +15,7 @@ enum GoalColumn {
     Col_Achieved,
     Col_Remaining,
     Col_Slack,   // この時間以内に着手しないと間に合わない
+    Col_Pace,    // 経過率と達成率
     Col_Start,
     Col_End,
     Col_Active,
@@ -87,6 +88,7 @@ public:
         switch (state) {
         case GoalEval::State::Achieved:      attr.SetBackgroundColour(AppTheme::GetGoalAchieved());      return true;
         case GoalEval::State::Urgent:        attr.SetBackgroundColour(AppTheme::GetGoalUrgent());        return true;
+        case GoalEval::State::Behind:        attr.SetBackgroundColour(AppTheme::GetGoalBehind());        return true;
         case GoalEval::State::Missed:        attr.SetBackgroundColour(AppTheme::GetGoalMissed());        return true;
         case GoalEval::State::NotStarted:    attr.SetBackgroundColour(AppTheme::GetGoalNotStarted());    return true;
         case GoalEval::State::EndedAchieved: attr.SetBackgroundColour(AppTheme::GetGoalEndedAchieved()); return true;
