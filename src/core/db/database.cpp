@@ -31,6 +31,22 @@ const char* const kGoalWindowDdl =
 	"memo TEXT,"
 	"UNIQUE (goal_id, window_key)"
 	")";
+
+// 予定。詳細は core/plan/plan.md。既存の DB にも後から追加するため、goal_window と同じく IF NOT EXISTS
+const char* const kPlanDdl =
+	"CREATE TABLE IF NOT EXISTS plan ("
+	"id INTEGER PRIMARY KEY AUTOINCREMENT,"
+	"goal_id INTEGER REFERENCES goal(id) ON DELETE SET NULL," // goal 削除時は、予定だけ残す
+	"category_id INTEGER NOT NULL REFERENCES categories(id)," // カテゴリはソフトデリートなので、行は消えない
+	"start_time TEXT NOT NULL," // 開始日時(UTC)
+	"end_time TEXT NOT NULL," // 終了日時(UTC)
+	"memo TEXT,"
+	"CHECK (end_time > start_time)" // "YYYY-MM-DD HH:MM:SS" なので、文字列の比較で前後を判定できる
+	")";
+
+// 「この期間の予定」を引くための索引
+const char* const kPlanIndexDdl =
+	"CREATE INDEX IF NOT EXISTS idx_plan_start_time ON plan (start_time)";
 }
 
 bool Database::Connect(const std::string& path) { // DB に接続
@@ -55,6 +71,8 @@ bool Database::Connect(const std::string& path) { // DB に接続
 
 	// 古い DB には goal_window がないので、ここで足す
 	sql << kGoalWindowDdl;
+	sql << kPlanDdl;
+	sql << kPlanIndexDdl;
 
 	m_get_path = path;
 	return true;
@@ -135,7 +153,7 @@ bool Database::Initialize(){
 		"memo TEXT,"
 		"CHECK ((category_id IS NULL) != (todo_id IS NULL))" // 排他をDB側で保証
 		")"
-		";") + kGoalWindowDdl + ";";
+		";") + kGoalWindowDdl + ";" + kPlanDdl + ";" + kPlanIndexDdl + ";";
 
 	char *errMsg = nullptr;
 	int rc = sqlite3_exec(db, sql_text.c_str(), nullptr, nullptr, &errMsg); // 書き込み処理

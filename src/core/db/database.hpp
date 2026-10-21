@@ -123,6 +123,24 @@ public:
 	bool SetGoalWindowOverride(int goal_id, const std::string& window_key, long long target_override, const std::string& memo); // なければ作る。achieved_at は保つ
 	bool ClearGoalWindowOverride(int goal_id, const std::string& window_key); // 例外だけを消す。他に持つ情報がなければ行ごと消す
 	bool HasGoalWindowOverride(int goal_id); // 過去・現在を問わず、目標の例外設定が 1 件でもあるか
+	// --- plan (db_plan.cpp) ---
+	struct PlanItem {
+		int id = -1;             // -1 = まだ保存されていない(新規)
+		int goal_id = -1;        // -1 = NULL (Goal に紐づかない)。更新しても変えない
+		int category_id = -1;
+		std::string start_time;  // UTC "YYYY-MM-DD HH:MM:SS"
+		std::string end_time;    // UTC
+		std::string memo;
+	};
+	// end_time が from_utc より後の予定を、start_time 順に返す。to_utc が空でなければ、start_time がそれより前のものに絞る
+	// category_id != -1 のときは、そのカテゴリ以下(自分自身と配下の項目)の予定に絞る
+	std::vector<Database::PlanItem> GetPlans(const std::string& from_utc, const std::string& to_utc = "", int category_id = -1);
+	// 予定として保存できるか。問題がなければ空文字、あれば理由を返す (時刻の形式、終了 > 開始、カテゴリが有効なタスクか)
+	std::string ValidatePlanItem(const PlanItem& item);
+	// 追加・更新・削除を、1 つのトランザクションでまとめて反映する。1 件でも問題があれば何も反映せず false (error に理由)。
+	// created の id は無視する。updated の goal_id は変えない。新規の id は new_ids に created と同じ順で返す
+	bool ApplyPlanChanges(const std::vector<PlanItem>& created, const std::vector<PlanItem>& updated,
+	                      const std::vector<int>& deleted, std::string& error, std::vector<int>* new_ids = nullptr);
 	void Close(); // DB クローズ処理
 	
     // --- db_report.cpp ---

@@ -13,7 +13,7 @@ erDiagram
     categories ||--o{ constraints : "target_category_id: 制約の監視対象"
     categories ||--o{ constraints : "event_category_id: 休憩イベントの記録先"
     constraints ||--o{ constraint_tiers : "段階的な休憩ルール"
-    plan ||--o{ records : "予定と実績の関連付け(あれば)"
+    %% plan と records は列では結ばない。予定と実績の対応は、同じカテゴリで時間が重なる分を毎回計算する
 
     categories {
         integer id PK
@@ -71,12 +71,11 @@ erDiagram
 
     plan {
         integer id PK
-        integer goal_id FK "NULL可。目標に紐付かない単独の予定も許容"
-        integer category_id FK "goal経由でなくても必須で持つ"
-        text plan_name
-        text start_time
-        text target_end
-        text memo
+        integer goal_id FK "NULL可。目標に紐付かない単独の予定も許容。goal削除時はNULLに戻す(ON DELETE SET NULL)"
+        integer category_id FK "必須。categoriesはソフトデリート(is_hidden)なので、行は消えない"
+        text start_time "開始日時(UTC)"
+        text end_time "終了日時(UTC)。CHECK(end_time > start_time)。start_timeに索引"
+        text memo "メモ"
     }
 
     constraints {
