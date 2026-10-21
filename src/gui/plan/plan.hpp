@@ -4,7 +4,11 @@
 #include <wx/grid.h>
 #include <wx/spinctrl.h>
 #include <vector>
+#include <wx/timer.h>
 #include "core/db/database.hpp"
+#include "core/plan/plan_feasibility.hpp"
+
+class PlanCheckPanel;
 
 // Plan の編集表 (Excel のような編集)。仕様は core/plan/plan.md。
 // 編集はまず表の中だけに溜め、Save でまとめて DB に反映する。Discard で破棄して読み直す。
@@ -42,6 +46,8 @@ class Plan : public wxPanel {
 	};
 
 	Database &m_db;
+	wxTimer m_check_timer;                 // 編集が落ち着いてから、Goal の達成判定をやり直す (一度に何度も計算しないため)
+	PlanCheckPanel* m_check_panel;         // 下のペイン。Goal を達成できるかの判定
 	wxGrid* m_grid;
 
 	// 絞り込み
@@ -76,6 +82,12 @@ class Plan : public wxPanel {
 	std::vector<int> m_conflict_partner;   // m_rows の添字 -> 同じカテゴリで時間が重なる相手の添字 (重ならなければ -1)
 	std::vector<int> m_deleted_ids;        // 保存するまで DB に残る、削除予定の予定 ID
 	std::vector<PlanRow> m_clipboard;      // Ctrl+C でためた行
+
+	// Goal の達成判定 (下のペイン)
+	void ScheduleCheck();                  // 少し待ってから RunCheck を呼ぶ
+	void RunCheck();
+	// 判定に使う予定。DB の予定に、表で編集中(未保存)の変更を重ねたもの。[from, to) と重なる分
+	std::vector<PlanFeasibility::PlanSpan> CollectEffectivePlans(long long from, long long to);
 
 	// 読み込みと描画
 	void LoadFromDb();                     // DB から読み直す (未保存の変更は消える)

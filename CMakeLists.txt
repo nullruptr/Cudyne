@@ -56,6 +56,7 @@ set(SOURCES
     src/gui/mainwnd/record_viewer/record_viewer.cpp
     src/gui/mainwnd/recording/recording.cpp
     src/gui/plan/plan.cpp
+    src/gui/plan/plan_check_panel.cpp
     src/gui/goal/edit_goal_dlg.cpp
     src/gui/goal/goal.cpp
     src/gui/goal/goal_override_dlg.cpp

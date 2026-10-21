@@ -5,9 +5,11 @@
 #include <wx/splitter.h>
 #include <wx/wrapsizer.h>
 #include <algorithm>
+#include <ctime>
 #include <functional>
 #include <set>
 #include "plan.hpp"
+#include "plan_check_panel.hpp"
 #include "core/plan/plan_conflict.hpp"
 #include "core/utils/format_time.hpp"
 #include "gui/common/datetime_dlg/datetime_dlg.hpp"
@@ -63,7 +65,8 @@ const wxColour kColourEmptyDayText(120, 120, 120);
 
 Plan::Plan(wxWindow* parent, Database &dbRef)
 	: wxPanel(parent, wxID_ANY)
-      , m_db(dbRef) {
+      , m_db(dbRef)
+      , m_check_timer(this) {
 
 	wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
     const int gap = FromDIP(5);
@@ -153,11 +156,11 @@ Plan::Plan(wxWindow* parent, Database &dbRef)
     toolbar->Add(row_time, 0, wxEXPAND);
     sizer->Add(toolbar, 0, wxEXPAND | wxALL, FromDIP(8));
 
-    // --- 表と、右のペイン ---
+    // --- 表と、下のペイン ---
     wxSplitterWindow* splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                                       wxSP_LIVE_UPDATE | wxSP_3DSASH);
     m_grid = new wxGrid(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize);
-    wxPanel* right = new wxPanel(splitter, wxID_ANY);
+    m_check_panel = new PlanCheckPanel(splitter);
 
     // 列のラベルを付ける前に、表を作る (作る前に付けるとクラッシュする)
     m_grid->CreateGrid(0, COL_COUNT);
@@ -185,14 +188,15 @@ Plan::Plan(wxWindow* parent, Database &dbRef)
         m_grid->SetColAttr(col, attr);
     }
 
-    splitter->SetMinimumPaneSize(FromDIP(150)); // どちらも、ドラッグで消えないようにする
-    splitter->SetSashGravity(1.0);              // ウィンドウの幅を変えたら、左 (表) だけが伸縮する。右は固定 (Time Log は逆の 0.0)
-    splitter->SplitVertically(m_grid, right, -FromDIP(420)); // 負の値 = 右のペインの幅。左に表、右に空きの領域 (後で Goal 達成の検証を置く)
+    splitter->SetMinimumPaneSize(FromDIP(120)); // どちらも、ドラッグで消えないようにする
+    splitter->SetSashGravity(1.0);              // ウィンドウの高さを変えたら、上 (表) だけが伸縮する。下は固定
+    splitter->SplitHorizontally(m_grid, m_check_panel, -FromDIP(260)); // 負の値 = 下のペインの高さ。上に表、下に Goal の達成判定
 
     sizer->Add(splitter, 1, wxEXPAND);
     SetSizer(sizer);
 
     // --- イベント ---
+    Bind(wxEVT_TIMER, [this](wxTimerEvent&) { RunCheck(); }, m_check_timer.GetId());
     m_cb_period->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent&) { OnFilterChanged(); });
     // From > To にならないよう、動かした側に合わせてもう一方を寄せる
     m_dp_from->Bind(wxEVT_DATE_CHANGED, [this](wxDateEvent&) {
@@ -457,6 +461,74 @@ void Plan::Render() {
     m_grid->EndBatch();
     UpdateStatus();
     SyncTimeEditor(m_grid->GetGridCursorRow(), m_grid->GetGridCursorCol()); // 描き直したので、入力欄も合わせる
+    ScheduleCheck(); // 予定が変わったので、Goal の達成判定もやり直す
+}
+
+// --- Goal の達成判定 (下のペイン) ---
+
+void Plan::ScheduleCheck() {
+    m_check_panel->SetBusy();
+    m_check_timer.StartOnce(400); // 続けて編集している間は、待ち直す
+}
+
+void Plan::RunCheck() {
+    const long long now = static_cast<long long>(std::time(nullptr));
+
+    // 判定する範囲: 期間で絞っているときは、その期間のうち、まだ終わっていない部分。絞っていないときは、今から 30 日
+    long long from = now, to = now + 30LL * 24 * 3600;
+    wxString note = _("Windows from now to 30 days ahead");
+    if (m_applied.period) {
+        wxDateTime f = m_applied.from;
+        f.ResetTime();
+        wxDateTime t = m_applied.to;
+        t.ResetTime();
+        t.Add(wxDateSpan::Day());
+        from = std::max(now, static_cast<long long>(f.GetTicks()));
+        to = static_cast<long long>(t.GetTicks());
+        note = wxString::Format(_("Windows in %s - %s that have not ended"),
+                                m_applied.from.Format("%Y-%m-%d"), m_applied.to.Format("%Y-%m-%d"));
+    }
+    note += _(" (includes unsaved plans)");
+
+    if (to <= from) {
+        m_check_panel->SetItems({}, _("The selected period has already ended"));
+        return;
+    }
+    m_check_panel->SetItems(PlanFeasibility::Check(m_db, CollectEffectivePlans(from, to), from, to, now), note);
+}
+
+std::vector<PlanFeasibility::PlanSpan> Plan::CollectEffectivePlans(long long from, long long to) {
+    std::vector<PlanFeasibility::PlanSpan> spans;
+    std::set<int> in_grid;
+
+    // 表の予定 (編集中・未保存の変更を含む)。カテゴリや期間で絞って見えていなくても、判定には全カテゴリの予定を使う
+    for (const PlanRow& row : m_rows) {
+        if (row.id != -1) in_grid.insert(row.id);
+
+        long category_id = 0;
+        wxDateTime start, end;
+        if (!row.cell[COL_CATEGORY].ToLong(&category_id) || category_id <= 0) continue;
+        if (!ParseLocalTime(row.cell[COL_START], start) || !ParseLocalTime(row.cell[COL_END], end) || end <= start) continue;
+
+        PlanFeasibility::PlanSpan span;
+        span.category_id = static_cast<int>(category_id);
+        span.start = static_cast<long long>(start.GetTicks());
+        span.end = static_cast<long long>(end.GetTicks());
+        spans.push_back(span);
+    }
+
+    // 表に出ていない、保存済みの予定 (ただし、表で削除した予定は除く)
+    const std::set<int> deleted(m_deleted_ids.begin(), m_deleted_ids.end());
+    for (const Database::PlanItem& item : m_db.GetPlans(GoalAchieved::ToUtcString(from), GoalAchieved::ToUtcString(to))) {
+        if (in_grid.count(item.id) || deleted.count(item.id)) continue;
+
+        PlanFeasibility::PlanSpan span;
+        span.category_id = item.category_id;
+        span.start = TimeUtils::ParseUTCStringToEpoch(item.start_time);
+        span.end = TimeUtils::ParseUTCStringToEpoch(item.end_time);
+        spans.push_back(span);
+    }
+    return spans;
 }
 
 void Plan::RenderRow(int grid_row, int data_index) {
@@ -732,6 +804,7 @@ void Plan::SelectCategory(int grid_row) {
     RecomputeConflicts(); // カテゴリが変わると、重なる相手も変わる
     RefreshAllColors();
     MarkChanged(i);
+    ScheduleCheck(); // カテゴリが変わったので、Goal の達成判定もやり直す
 }
 
 // --- セルの編集 ---
@@ -801,6 +874,7 @@ void Plan::CellValueChanged(int row, int col) {
 
     // 選択中のセルなら、日時の入力欄にも反映する (正規化した値になる)
     SyncTimeEditor(m_grid->GetGridCursorRow(), m_grid->GetGridCursorCol());
+    ScheduleCheck(); // 時刻やカテゴリが変わったので、Goal の達成判定もやり直す
 }
 
 // --- 選択中のセルの日時を、日付・時刻・秒で編集する入力欄 ---
@@ -1020,7 +1094,7 @@ PlanFrame::PlanFrame(wxWindow* parent, Database &dbRef)
 	: wxFrame(parent, wxID_ANY, wxT("Plan"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT) {
 
     // ウィンドウが初期化された後に FromDIP しないとクラッシュする
-    SetSize(FromDIP(wxSize(1300, 650)));
+    SetSize(FromDIP(wxSize(1100, 800)));
 
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
     m_plan = new Plan(this, dbRef);
