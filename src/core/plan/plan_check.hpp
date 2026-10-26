@@ -33,6 +33,16 @@ inline long long Overlap(long long a0, long long a1, long long b0, long long b1)
     return std::max(0LL, std::min(a1, b1) - std::max(a0, b0));
 }
 
+constexpr long long kFarFuture = 100LL * 365 * 24 * 3600;   // 期限がないときの「十分先」
+
+// 判定に使う予定を取り出す範囲 [from, to)。Goal の窓のうち、今以降の部分で、
+// 表で絞っている期間(Filter by period)や、表示している行とは関係なく、窓そのものから決める。
+// 期限がない窓と、期限を過ぎた窓は、今から十分先まで (期限後の予定も、参考に数えるため)
+inline void PlanRange(long long window_start, long long deadline, long long now, long long& from, long long& to) {
+    from = std::max(now, window_start);
+    to = (deadline == kNoDeadline || deadline <= now) ? from + kFarFuture : deadline;
+}
+
 // 1 つの窓の判定。
 // - target: その窓の目標(秒)。例外設定があれば、差し替え後の値
 // - achieved: 実績(秒)。記録中の分を含む
@@ -49,14 +59,13 @@ inline Result Judge(long long target, long long achieved, long long now, long lo
     }
 
     const bool has_deadline = deadline != kNoDeadline;
-    const long long from = std::max(now, window_start);
-    const long long far_future = from + 100LL * 365 * 24 * 3600; // 期限がなければ、十分先まで
-    const long long to = has_deadline ? deadline : far_future;
+    long long from = 0, to = 0;
+    PlanRange(window_start, deadline, now, from, to);
 
     if (has_deadline && deadline <= now) {
         // 期限は過ぎている。今から先の予定は(期限に関係なく)参考に数えるが、判定は「超過」
         r.verdict = Verdict::Overdue;
-        for (const Span& p : plans) r.planned += Overlap(p.start, p.end, now, far_future);
+        for (const Span& p : plans) r.planned += Overlap(p.start, p.end, now, to);
         r.shortfall = std::max(0LL, r.remaining - r.planned);
         return r;
     }

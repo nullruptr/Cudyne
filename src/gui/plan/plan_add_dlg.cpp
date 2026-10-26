@@ -1131,7 +1131,45 @@ void PlanAddDlg::DoAdd(bool close) {
     // 続けて入力できるよう、開いたままにする。いま追加した予定は「すでにある予定」になるので、取り直す
     SetStatus(wxString::Format(_("Added %d plans"), static_cast<int>(request.entries.size())));
     m_spans_by_category.clear();
-    UpdatePreview();
+    ClearInputs();
     m_one_day.monthday->SetFocus();
     m_one_day.monthday->SelectAll();
+}
+
+// 追加モードの初期値 (今日、次の正時から 1 時間、メモなし) に戻す。行は 1 つずつに減らし、入力方法も 1 日 / 1 つに戻す
+void PlanAddDlg::ClearInputs() {
+    const wxDateTime today = wxDateTime::Today();
+    int start_seconds = (wxDateTime::Now().GetHour() + 1) * 3600;
+    if (start_seconds > PlanInput::kMaxStartHour * 3600) start_seconds = PlanInput::kMaxStartHour * 3600;
+    const int end_seconds = start_seconds + 3600;
+
+    while (m_date_rows.size() > 1) {
+        DateRow row = m_date_rows.back();
+        m_date_rows.pop_back();
+        m_date_rows_sizer->Detach(row.sizer);
+        row.sizer->Clear(true);
+        delete row.sizer;
+    }
+    while (m_time_rows.size() > 1) {
+        TimeRow row = m_time_rows.back();
+        m_time_rows.pop_back();
+        m_time_rows_sizer->Detach(row.sizer);
+        row.sizer->Clear(true);
+        delete row.sizer;
+    }
+
+    SetDateRow(m_one_day, today);
+    SetDateRow(m_date_rows.front(), today);
+    SetDateRow(m_repeat_start, today);
+    m_pick_date->SetValue(today);
+    m_repeat_count->ChangeValue("7");
+    m_repeat_step->ChangeValue("1");
+    m_repeat_unit->SetSelection(0);
+    SetTimeRow(m_one_time, start_seconds, end_seconds);
+    SetTimeRow(m_time_rows.front(), start_seconds, end_seconds);
+    m_memo->ChangeValue("");
+    m_touched.clear();
+
+    ApplyDateMode(DATE_ONE);   // 先頭の日付を引き継ぐが、上で全部今日にしてあるので同じ
+    ApplyTimeMode(TIME_ONE);
 }

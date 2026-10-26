@@ -62,12 +62,14 @@ const wxColour kColourReadOnly(240, 240, 240);  // 編集できないセル: 薄
 const wxColour kColourConflict(255, 199, 206);  // 同じカテゴリで時間が重なる行: 赤
 const wxColour kColourEmptyDay(217, 217, 217);  // 予定のない日の行: 灰
 const wxColour kColourEmptyDayText(120, 120, 120);
+const wxColour kColourCountdown(221, 235, 247); // 次の予定までのカウントダウンの行: 薄い青
 }
 
 Plan::Plan(wxWindow* parent, Database &dbRef)
 	: wxPanel(parent, wxID_ANY)
       , m_db(dbRef)
-      , m_check_timer(this) {
+      , m_check_timer(this)
+      , m_countdown_timer(this) {
 
 	wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
     const int gap = FromDIP(5);
@@ -171,6 +173,7 @@ Plan::Plan(wxWindow* parent, Database &dbRef)
     m_grid->SetColLabelValue(COL_START, "start_time");
     m_grid->SetColLabelValue(COL_END, "end_time");
     m_grid->SetColLabelValue(COL_TOTAL, "Total");
+    m_grid->SetColLabelValue(COL_COUNTDOWN, "Countdown");
     m_grid->SetColLabelValue(COL_MEMO, "memo");
 
     m_grid->SetColSize(COL_ID, FromDIP(50));
@@ -179,11 +182,12 @@ Plan::Plan(wxWindow* parent, Database &dbRef)
     m_grid->SetColSize(COL_START, FromDIP(150));
     m_grid->SetColSize(COL_END, FromDIP(150));
     m_grid->SetColSize(COL_TOTAL, FromDIP(80));
+    m_grid->SetColSize(COL_COUNTDOWN, FromDIP(100));
     m_grid->SetColSize(COL_MEMO, FromDIP(200));
     m_grid->SetRowLabelSize(FromDIP(100)); // 行ラベルに、開始日 (YYYY-MM-DD) を出す
 
     // ID、パス、合計時間は、他のセルから決まる値なので編集できない
-    for (int col : {static_cast<int>(COL_ID), static_cast<int>(COL_PATH), static_cast<int>(COL_TOTAL)}) {
+    for (int col : {static_cast<int>(COL_ID), static_cast<int>(COL_PATH), static_cast<int>(COL_TOTAL), static_cast<int>(COL_COUNTDOWN)}) {
         wxGridCellAttr* attr = new wxGridCellAttr; // 所有権は表に移る
         attr->SetReadOnly();
         m_grid->SetColAttr(col, attr);
@@ -198,6 +202,10 @@ Plan::Plan(wxWindow* parent, Database &dbRef)
 
     // --- イベント ---
     Bind(wxEVT_TIMER, [this](wxTimerEvent&) { RunCheck(); }, m_check_timer.GetId());
+    Bind(wxEVT_TIMER, [this](wxTimerEvent&) { UpdateCountdown(); }, m_countdown_timer.GetId());
+    m_countdown_timer.Start(1000);
+    FindNextStart();
+    UpdateCountdown();
     m_cb_period->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent&) { OnFilterChanged(); });
     // From > To にならないよう、動かした側に合わせてもう一方を寄せる
     m_dp_from->Bind(wxEVT_DATE_CHANGED, [this](wxDateEvent&) {
@@ -429,18 +437,32 @@ void Plan::Render() {
     struct Entry { int data_index; int empty_index; };
     std::vector<Entry> sequence;
     size_t next_empty = 0;
+    // カウントダウンの行 (empty_index = -2) は、現在時刻より後に始まる最初の予定の直前に入れる。なければ最後
+    const long long now = static_cast<long long>(std::time(nullptr));
+    bool countdown_placed = false;
     for (int i = 0; i < static_cast<int>(m_rows.size()); ++i) {
         const std::string key = DateKey(m_rows[i].cell[COL_START]);
         while (!key.empty() && next_empty < empty_days.size() && empty_days[next_empty] < key) {
             sequence.push_back({-1, static_cast<int>(next_empty++)});
         }
+        wxDateTime start;
+        if (!countdown_placed && ParseLocalTime(m_rows[i].cell[COL_START], start) && static_cast<long long>(start.GetTicks()) > now) {
+            sequence.push_back({-1, -2});
+            countdown_placed = true;
+        }
         sequence.push_back({i, 0});
     }
     while (next_empty < empty_days.size()) sequence.push_back({-1, static_cast<int>(next_empty++)});
+    if (!countdown_placed) sequence.push_back({-1, -2});
 
     if (!sequence.empty()) m_grid->AppendRows(static_cast<int>(sequence.size()));
+    m_countdown_row = -1;
     for (int g = 0; g < static_cast<int>(sequence.size()); ++g) {
-        if (sequence[g].data_index >= 0) {
+        if (sequence[g].data_index < 0 && sequence[g].empty_index == -2) {
+            m_grid_to_data.push_back(-1);
+            m_countdown_row = g;
+            RenderCountdownRow(g);
+        } else if (sequence[g].data_index >= 0) {
             m_grid_to_data.push_back(sequence[g].data_index);
             m_data_to_grid[sequence[g].data_index] = g;
             RenderRow(g, sequence[g].data_index);
@@ -478,7 +500,66 @@ void Plan::ScheduleCheck() {
     m_check_timer.StartOnce(400); // 続けて編集している間は、待ち直す
 }
 
+// 予定が変わるたびに呼ばれる ScheduleCheck の後 (RunCheck) で、次の開始も探し直す
+void Plan::FindNextStart() {
+    const long long now = static_cast<long long>(std::time(nullptr));
+    m_next_start = -1;
+    for (const PlanFeasibility::PlanSpan& span : CollectEffectivePlans(now, now + 366LL * 24 * 3600)) {
+        if (span.start > now && (m_next_start == -1 || span.start < m_next_start)) m_next_start = span.start;
+    }
+}
+
+// 予定の行の Countdown 列: 開始まで残り (HH:MM:SS) / 進行中 / 終了
+wxString Plan::RowCountdownText(const PlanRow& row, long long now) const {
+    wxDateTime start, end;
+    if (!ParseLocalTime(row.cell[COL_START], start)) return "-";
+    const long long s = static_cast<long long>(start.GetTicks());
+    if (s > now) return TimeUtils::FormatSeconds(s - now);
+    if (ParseLocalTime(row.cell[COL_END], end) && static_cast<long long>(end.GetTicks()) > now) return _("In progress");
+    return _("Ended");
+}
+
+void Plan::UpdateRowCountdowns() {
+    const long long now = static_cast<long long>(std::time(nullptr));
+    for (size_t i = 0; i < m_rows.size() && i < m_data_to_grid.size(); ++i) {
+        const int g = m_data_to_grid[i];
+        if (g < 0 || g >= m_grid->GetNumberRows()) continue;
+        const wxString text = RowCountdownText(m_rows[i], now);
+        if (m_grid->GetCellValue(g, COL_COUNTDOWN) != text) m_grid->SetCellValue(g, COL_COUNTDOWN, text);
+    }
+}
+
+// 表のカウントダウンの行 (現在時刻の位置にある灰色でない行) の中身を、いまの時刻で書き直す
+void Plan::UpdateCountdown() {
+    const long long now = static_cast<long long>(std::time(nullptr));
+    if (m_next_start != -1 && m_next_start <= now) {
+        // 開始時刻を過ぎた: 次の予定を探し、行の位置も移す (セルを編集している最中は、次の秒に回す)
+        if (m_grid->IsCellEditControlShown()) return;
+        FindNextStart();
+        CaptureGrid();
+        Render();
+        return;
+    }
+    UpdateRowCountdowns();
+    WriteCountdownCells(now);
+}
+
+void Plan::WriteCountdownCells(long long now) {
+    if (m_countdown_row < 0 || m_countdown_row >= m_grid->GetNumberRows()) return;
+
+    for (int col = 0; col < COL_COUNT; ++col) m_grid->SetCellValue(m_countdown_row, col, "");
+    if (m_next_start == -1) {
+        m_grid->SetCellValue(m_countdown_row, COL_PATH, _("No upcoming plan"));
+    } else {
+        m_grid->SetCellValue(m_countdown_row, COL_PATH, _("Time until the next plan starts"));
+        m_grid->SetCellValue(m_countdown_row, COL_START, TimeUtils::FormatSeconds(m_next_start - now));
+        m_grid->SetCellValue(m_countdown_row, COL_END, wxDateTime(static_cast<time_t>(m_next_start)).Format(kTimeFormat));
+    }
+}
+
 void Plan::RunCheck() {
+    FindNextStart();
+    UpdateCountdown();
     const long long now = static_cast<long long>(std::time(nullptr));
 
     // 判定する範囲: 期間で絞っているときは、その期間のうち、まだ終わっていない部分。絞っていないときは、今から 30 日
@@ -499,14 +580,18 @@ void Plan::RunCheck() {
     if (m_applied.category_id != -1) {
         note += "\n" + wxString::Format(_("Goals of: %s"), wxString::FromUTF8(m_db.GetCategoriesPath(m_applied.category_id)));
     }
-    note += _(" (includes unsaved plans)");
+    // 選ぶ窓は、上の期間で決まる。数える予定は、窓そのものの範囲で DB から取り出し、表の未保存の変更を重ねる
+    note += "\n" + wxString(_("Plans are counted over each goal's whole window: saved plans plus the unsaved changes in the table. The table's filter does not matter."));
 
     if (to <= from) {
         m_check_panel->SetItems({}, _("The selected period has already ended"));
         return;
     }
-    m_check_panel->SetItems(PlanFeasibility::Check(m_db, CollectEffectivePlans(from, to), from, to, now,
-                                                   m_applied.category_id), note);
+    m_check_panel->SetItems(
+        PlanFeasibility::Check(m_db,
+                               [this](long long window_from, long long window_to) { return CollectEffectivePlans(window_from, window_to); },
+                               from, to, now, m_applied.category_id),
+        note);
 }
 
 std::vector<PlanFeasibility::PlanSpan> Plan::CollectEffectivePlans(long long from, long long to) {
@@ -546,10 +631,23 @@ std::vector<PlanFeasibility::PlanSpan> Plan::CollectEffectivePlans(long long fro
 void Plan::RenderRow(int grid_row, int data_index) {
     const PlanRow& row = m_rows[data_index];
     for (int col = 0; col < COL_COUNT; ++col) m_grid->SetCellValue(grid_row, col, row.cell[col]);
+    m_grid->SetCellValue(grid_row, COL_COUNTDOWN, RowCountdownText(row, static_cast<long long>(std::time(nullptr))));
 
     const std::string key = DateKey(row.cell[COL_START]);
     m_grid->SetRowLabelValue(grid_row, key.empty() ? wxString("-") : wxString::FromUTF8(key));
     UpdateRowColor(grid_row);
+}
+
+// 次の予定までのカウントダウンの行。編集できない、表示だけの行
+void Plan::RenderCountdownRow(int grid_row) {
+    m_grid->SetRowLabelValue(grid_row, _("Now"));
+    for (int col = 0; col < COL_COUNT; ++col) {
+        m_grid->SetReadOnly(grid_row, col, true);
+        m_grid->SetCellBackgroundColour(grid_row, col, kColourCountdown);
+        m_grid->SetCellTextColour(grid_row, col, *wxBLACK);
+    }
+    FindNextStart();
+    WriteCountdownCells(static_cast<long long>(std::time(nullptr)));
 }
 
 // 予定のない日の行。編集できない、表示だけの行
@@ -579,7 +677,7 @@ void Plan::UpdateRowColor(int grid_row) {
     if (conflict) row_colour = kColourConflict;
 
     for (int col = 0; col < COL_COUNT; ++col) {
-        const bool read_only = col == COL_ID || col == COL_PATH || col == COL_TOTAL;
+        const bool read_only = col == COL_ID || col == COL_PATH || col == COL_TOTAL || col == COL_COUNTDOWN;
         m_grid->SetCellBackgroundColour(grid_row, col,
             (read_only && m_rows[i].state == RowState::Clean && !conflict) ? kColourReadOnly : row_colour);
     }

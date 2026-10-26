@@ -210,4 +210,5 @@ private:
     void ChooseCategory();
     void SetStatus(const wxString& text);
     void DoAdd(bool close);
+    void ClearInputs();                    // Add and continue のあと、日付・時間帯・メモを初期値に戻す (カテゴリは残す)
 };

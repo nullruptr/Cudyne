@@ -25,7 +25,7 @@ class Plan : public wxPanel {
 	bool ConfirmDiscard();
 
     private:
-	enum Column { COL_ID = 0, COL_CATEGORY, COL_PATH, COL_START, COL_END, COL_TOTAL, COL_MEMO, COL_COUNT };
+	enum Column { COL_ID = 0, COL_CATEGORY, COL_PATH, COL_START, COL_END, COL_TOTAL, COL_COUNTDOWN, COL_MEMO, COL_COUNT };
 	enum class RowState { Clean, Modified, New };
 	enum ShiftUnit { UNIT_MINUTES = 0, UNIT_HOURS, UNIT_DAYS, UNIT_WEEKS, UNIT_MONTHS };
 
@@ -68,6 +68,16 @@ class Plan : public wxPanel {
 
 	wxStaticText* m_st_status;
 
+	// 次の予定の開始までのカウントダウンの行 (1 秒ごとに更新)。表で編集中の変更も含め、全カテゴリの予定から探す
+	int m_countdown_row = -1;              // 表の中の、カウントダウンの行 (現在時刻の位置。表示用で m_rows には入らない)
+	wxTimer m_countdown_timer;
+	long long m_next_start = -1;           // 次に始まる予定の開始 (epoch 秒)。なければ -1
+	void FindNextStart();                  // 次に始まる予定を探し直す
+	void UpdateCountdown();
+	void UpdateRowCountdowns();            // 全予定の行の「Countdown」列を、いまの時刻で書き直す
+	wxString RowCountdownText(const PlanRow& row, long long now) const;
+	void WriteCountdownCells(long long now);
+
 	// 選択中の start_time / end_time セルを、日付(カレンダー)・時刻・秒で編集する入力欄 (入力は Edit ToDo と同じ)
 	wxStaticText* m_st_time_target;
 	wxDatePickerCtrl* m_dp_time;
@@ -96,6 +106,7 @@ class Plan : public wxPanel {
 	void CaptureGrid();                    // 表で編集した内容を m_rows に取り込む (行を増減する前に呼ぶ)
 	void Render();                         // m_rows から表を描き直す
 	void RenderRow(int grid_row, int data_index);
+	void RenderCountdownRow(int grid_row);
 	void RenderEmptyDayRow(int grid_row, const wxString& date);
 	static void ComputeDerived(Database& db, PlanRow& row); // パスと合計時間を、他のセルから求める
 	void UpdateRowColor(int grid_row);
