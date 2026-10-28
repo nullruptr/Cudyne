@@ -5,6 +5,7 @@
 #include <wx/treectrl.h>
 #include <wx/regex.h>
 #include "mainwnd.hpp"
+#include "main.hpp"
 #include "gui/mainwnd/activity_report/activity_report.hpp"
 #include "gui/mainwnd/controller/controller.hpp"
 #include "gui/mainwnd/record_viewer/record_viewer.hpp"
@@ -191,6 +192,30 @@ Mainwnd::Mainwnd(wxWindow* parent) : wxFrame(parent, wxID_ANY, _("wxAUI Test"),
         m_mgr.Update();
 	// 高DPI対応
 	Bind(wxEVT_DPI_CHANGED, &Mainwnd::OnDPIChanged, this);
+
+    // 引数にパスあれば、自動接続
+    wxString path;
+    path = MBApp::Getter(wxString());
+    if (!path.IsEmpty()) {
+		std::string utf8Path = std::string(path.ToUTF8());
+
+		if (db.Connect(utf8Path)){
+			// ステータスバーに設定
+            current_DB_Path = path;
+			SetStatusText(_("Connected"), 0);
+			SetStatusText(current_DB_Path, 1);
+			m_categoryTree->UpdateTreeData();
+			wxCommandEvent dummy;
+			OnRecordUpdate(dummy);
+
+			// 前回終了し忘れた Record があれば、Recording パネルに自動で復元する
+			for (const auto& r : db.GetUnfinishedRecords()) {
+				m_recording->ResumeRecord(r);
+			}
+		} else {
+			wxMessageBox(_("Connection failed"));
+		}
+    }
     }
 
 void Mainwnd::OnQuit(wxCommandEvent& WXUNUSED(event)){ // 終了確認

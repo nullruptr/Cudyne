@@ -2,6 +2,7 @@
 #include <wx/event.h>
 #include <wx/wx.h>
 #include <wx/string.h>
+#include <wx/cmdline.h>
 
 // フレーム初期化
 class MBFrame: public wxFrame {
@@ -14,3 +15,14 @@ private:
 	wxFont clock_font;
 };
 
+
+class MBApp : public wxApp {
+public:
+	bool OnInit() override;
+    void Parse();
+    static wxString& Getter(wxString path);
+    wxCmdLineParser parser;
+    static wxString s_path;
+private:
+	wxLocale locale;
+};
